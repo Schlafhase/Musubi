@@ -1,4 +1,7 @@
 namespace Musubi.Compiler.Nodes
 {
-    public abstract class Node;
+    public abstract class Node
+    {
+        public string Id = Guid.NewGuid().ToString().Replace("-", "");
+    }
 }
