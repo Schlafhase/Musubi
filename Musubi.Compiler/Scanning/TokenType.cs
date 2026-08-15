@@ -6,6 +6,8 @@ namespace Musubi.Compiler.Scanning
         RightParen,
         Dot,
         Lambda,
+        Definition,
+        StatementEnd,
 
         Identifier,
         Number,
@@ -13,6 +15,6 @@ namespace Musubi.Compiler.Scanning
         True,
         False,
 
-        EOF
+        EOF,
     }
 }

@@ -24,6 +24,11 @@ namespace Musubi.Compiler
             Console.WriteLine();
         }
 
+        public void ReportToken(Token t, string message)
+        {
+            Report(message, t.Line, t.Column, t.Lexeme.Length);
+        }
+
         public void ReportToken(Token t)
         {
             Report($"Unexpected token of type '{t.Type}'", t.Line, t.Column, t.Lexeme.Length);
@@ -32,7 +37,7 @@ namespace Musubi.Compiler
         public void ReportUnexpected(Token actual, params TokenType[] expected)
         {
             Report(
-                $"Expected {(expected.Length > 1 ? "one of" : "")} '{string.Join(", ", expected)}' but got '{actual.Type}' instead",
+                $"Expected {(expected.Length > 1 ? "one of " : "")}'{string.Join(", ", expected)}' but got '{actual.Type}' instead",
                 actual.Line,
                 actual.Column,
                 actual.Lexeme.Length
@@ -41,7 +46,12 @@ namespace Musubi.Compiler
 
         public void ReportUnexpected(Token actual, string expected)
         {
-            Report($"Expected {expected} but got '{actual.Type}' instead", actual.Line, actual.Column, actual.Lexeme.Length);
+            Report(
+                $"Expected {expected} but got '{actual.Type}' instead",
+                actual.Line,
+                actual.Column,
+                actual.Lexeme.Length
+            );
         }
     }
 }

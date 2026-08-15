@@ -1,3 +1,5 @@
+document: definition* expression
+definition: identifier definitionSym expression expressionEndSym
 expression: atom atom*
 atom: lambda | variable | "(" expression ")"
 lambda: lambdaSym identifier "." expression

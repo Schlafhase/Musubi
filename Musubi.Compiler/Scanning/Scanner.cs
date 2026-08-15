@@ -46,6 +46,18 @@ namespace Musubi.Compiler.Scanning
                 case 'λ':
                     addToken(TokenType.Lambda);
                     break;
+                case ';':
+                    addToken(TokenType.StatementEnd);
+                    break;
+                case ':':
+                    if (peek() == '=')
+                    {
+                        advance();
+                        addToken(TokenType.Definition);
+                        break;
+                    }
+                    errors.Report("Unexpected character ':'. Did you mean ':='?", _line, _column);
+                    break;
                 case ' ':
                 case '\r':
                 case '\t':

@@ -1,0 +1,82 @@
+using Musubi.Compiler.Nodes;
+using Musubi.Compiler.Parsing;
+using Musubi.Compiler.Scanning;
+
+namespace Musubi.Compiler
+{
+    public static class MusubiCompiler
+    {
+        public static string Compile(string source, bool printAST = false)
+        {
+            Errors e = new(source);
+            Scanner s = new(source, e);
+            List<Token> tokens = s.ScanTokens();
+
+            Parser p = new(tokens, e);
+            Node root = p.Parse();
+
+            if (printAST)
+            {
+                printNode(root);
+            }
+
+            if (e.HasErrors)
+            {
+                throw new InvalidOperationException("The source has errors. Can't compile.");
+            }
+
+            Compiling.Compiler c = new(root);
+            return c.Compile();
+        }
+
+        private static void writeIndent(int n)
+        {
+            Console.Write(new string(' ', n));
+        }
+
+        private static void printNode(Node root, int depth = 0)
+        {
+            writeIndent(depth);
+            switch (root)
+            {
+                case Document d:
+                    Console.WriteLine("Document");
+                    foreach (Alias def in d.Definitions)
+                    {
+                        writeIndent(depth + 1);
+                        Console.WriteLine($"Definition {def.Name}");
+                        printNode(def.Value, depth + 2);
+                    }
+                    printNode(d.Expression, depth + 1);
+                    break;
+                case Application a:
+                    Console.WriteLine("Application");
+                    printNode(a.Function, depth + 1);
+                    printNode(a.Argument, depth + 1);
+                    break;
+                case Error:
+                    Console.WriteLine("Syntax Error");
+                    break;
+                case Lambda l:
+                    Console.WriteLine($"Lambda ({l.CapturedVariable})");
+                    printNode(l.Body, depth + 1);
+                    break;
+                case Variable v:
+                    Console.WriteLine($"Variable '{v.Name}'");
+                    break;
+                case Number n:
+                    Console.WriteLine($"Number '{n.Value}");
+                    break;
+                case True:
+                    Console.WriteLine("True");
+                    break;
+                case False:
+                    Console.WriteLine("False");
+                    break;
+                default:
+                    Console.WriteLine(root.GetType().Name);
+                    break;
+            }
+        }
+    }
+}

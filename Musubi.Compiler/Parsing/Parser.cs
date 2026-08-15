@@ -6,15 +6,44 @@ namespace Musubi.Compiler.Parsing
     public class Parser(List<Token> tokens, Errors errors)
     {
         private int _current;
+        private readonly Stack<string> _knownVariables = [];
+        private readonly List<string> _definedAliases = [];
 
         public Node Parse()
         {
-            return parseToken();
+            Node root = document();
+            if (!endReached())
+            {
+                errors.ReportUnexpected(peek(), "end of file");
+            }
+            return root;
         }
 
-        private Node parseToken()
+        // document: definition* expression
+        private Document document()
         {
-            return expression();
+            List<Alias> definitions = [];
+            while (checkNext(TokenType.Identifier, TokenType.Definition))
+            {
+                definitions.Add(definition());
+            }
+            Node toplevel = expression();
+            expect("a semicolon", TokenType.StatementEnd);
+            return new() { Definitions = definitions, Expression = toplevel };
+        }
+
+        private Alias definition()
+        {
+            string name = identifier();
+            if (_definedAliases.Contains(name))
+            {
+                errors.ReportToken(previous(), $"Duplicate definition of alias '{name}'");
+            }
+            expect(TokenType.Definition);
+            Node value = expression();
+            expect("a semicolon", TokenType.StatementEnd);
+            _definedAliases.Add(name);
+            return new() { Name = name, Value = value };
         }
 
         // expression: atom atom*
@@ -49,7 +78,16 @@ namespace Musubi.Compiler.Parsing
                     return lambda();
                 case TokenType.Identifier:
                     string id = identifier();
-                    return new Variable() { Name = id };
+                    if (_knownVariables.Contains(id))
+                    {
+                        return new Variable() { Name = id };
+                    }
+                    else if (_definedAliases.Contains(id))
+                    {
+                        return new AliasReference() { Alias = id };
+                    }
+                    errors.ReportToken(previous(), $"Undefined identifier '{id}'");
+                    return new Error();
                 case TokenType.LeftParen:
                     advance();
                     Node inner = expression();
@@ -78,7 +116,9 @@ namespace Musubi.Compiler.Parsing
                 string captured = identifier();
                 if (expect(TokenType.Dot))
                 {
+                    _knownVariables.Push(captured);
                     Node body = expression();
+                    _knownVariables.Pop();
                     return new Lambda() { CapturedVariable = captured, Body = body };
                 }
             }
@@ -115,6 +155,22 @@ namespace Musubi.Compiler.Parsing
                 return false;
             }
             return types.Contains(peek().Type);
+        }
+
+        private bool checkNext(params TokenType[] typeSequence)
+        {
+            if (_current + typeSequence.Length >= tokens.Count)
+            {
+                return false;
+            }
+            for (int i = 0; i < typeSequence.Length; i++)
+            {
+                if (typeSequence[i] != tokens[_current + i].Type)
+                {
+                    return false;
+                }
+            }
+            return true;
         }
 
         private bool match(params TokenType[] types)
