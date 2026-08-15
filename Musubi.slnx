@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="Musubi.Compiler/Musubi.Compiler.csproj" />
+  <Project Path="Musubi.Testing/Musubi.Testing.csproj" />
+</Solution>

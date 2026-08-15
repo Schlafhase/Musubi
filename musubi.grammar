@@ -1,0 +1,5 @@
+expression: atom atom*
+atom: lambda | variable | "(" expression ")"
+lambda: lambdaSym identifier "." expression
+variable: identifier
+lambdaSym: "\" | "λ"
