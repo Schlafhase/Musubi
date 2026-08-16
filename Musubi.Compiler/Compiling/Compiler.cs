@@ -1,4 +1,3 @@
-using System.Collections.ObjectModel;
 using System.Reflection;
 using System.Text;
 using Musubi.Compiler.Nodes;
@@ -9,6 +8,7 @@ namespace Musubi.Compiler.Compiling
     {
         public StringBuilder CodeBuilder = new();
         public Dictionary<string, string> DefinitionToCode = [];
+        public int VariableCount;
 
         public CompilingContext() { }
     }
@@ -16,8 +16,6 @@ namespace Musubi.Compiler.Compiling
     public class Compiler(Node root)
     {
         private readonly StringBuilder _globalCode = new();
-
-        private readonly Stack<string> _environment = [];
 
         public string Compile()
         {
@@ -95,7 +93,7 @@ namespace Musubi.Compiler.Compiling
 
         private string compileVariable(Variable v, CompilingContext _)
         {
-            return $"env->{v.Name}";
+            return $"env->v{v.DeBruijn}";
         }
 
         private string compileApplication(Application a, CompilingContext context)
@@ -105,24 +103,25 @@ namespace Musubi.Compiler.Compiling
 
         private string compileLambda(Lambda l, CompilingContext context)
         {
-            CompilingContext innerContext = new() { DefinitionToCode = context.DefinitionToCode };
-            _environment.Push(l.CapturedVariable);
+            CompilingContext innerContext = new()
+            {
+                DefinitionToCode = context.DefinitionToCode,
+                VariableCount = context.VariableCount + +1,
+            };
             string body = compile(l.Body, innerContext);
-            _environment.Pop();
 
             // define environment for this lambda
             _globalCode.Append("typedef struct {");
-            foreach (string variable in _environment)
+            for (int i = 0; i <= context.VariableCount; i++)
             {
-                _globalCode.Append($"Lambda *{variable};");
+                _globalCode.Append($"Lambda *v{i};");
             }
-            _globalCode.Append($"Lambda *{l.CapturedVariable};");
             _globalCode.Append($"}} e{l.Id};");
 
             // define function
-            _globalCode.Append($"Lambda *l{l.Id}(void *raw_env, Lambda *{l.CapturedVariable}) {{");
+            _globalCode.Append($"Lambda *l{l.Id}(void *raw_env, Lambda *arg) {{");
             _globalCode.Append($"e{l.Id} *env = raw_env;");
-            _globalCode.Append($"env->{l.CapturedVariable} = {l.CapturedVariable};");
+            _globalCode.Append("env->v0 = arg;");
             _globalCode.Append(innerContext.CodeBuilder.ToString());
             _globalCode.Append($"return {body};");
             _globalCode.Append("}");
@@ -131,9 +130,9 @@ namespace Musubi.Compiler.Compiling
             context.CodeBuilder.Append($"Lambda *_l{l.Id} = malloc(sizeof(Lambda));");
             context.CodeBuilder.Append($"_l{l.Id}->fn = &l{l.Id};");
             context.CodeBuilder.Append($"e{l.Id} *_e{l.Id} = malloc(sizeof(e{l.Id}));");
-            foreach (string variable in _environment)
+            for (int i = 0; i < context.VariableCount; i++)
             {
-                context.CodeBuilder.Append($"_e{l.Id}->{variable} = env->{variable};");
+                context.CodeBuilder.Append($"_e{l.Id}->v{i+1} = env->v{i};");
             }
             context.CodeBuilder.Append($"_l{l.Id}->env = _e{l.Id};");
 

@@ -48,12 +48,7 @@ namespace Musubi.Compiler.Parsing
             Node left = atom();
 
             while (
-                check(
-                    TokenType.Lambda,
-                    TokenType.Identifier,
-                    TokenType.LeftParen,
-                    TokenType.Number
-                )
+                check(TokenType.Lambda, TokenType.Identifier, TokenType.LeftParen, TokenType.Number)
             )
             {
                 Node right = atom();
@@ -72,11 +67,18 @@ namespace Musubi.Compiler.Parsing
                     return lambda();
                 case TokenType.Identifier:
                     string id = identifier();
-                    if (_knownVariables.Contains(id))
+                    // find 0-based De Bruijn index
+
+                    int debruijn = 0;
+                    foreach (string name in _knownVariables)
                     {
-                        return new Variable() { Name = id };
+                        if (name == id)
+                        {
+                            return new Variable() { DeBruijn = debruijn };
+                        }
+                        debruijn++;
                     }
-                    else if (_definedAliases.Contains(id))
+                    if (_definedAliases.Contains(id))
                     {
                         return new DefinitionReference() { Definition = id };
                     }
@@ -109,7 +111,7 @@ namespace Musubi.Compiler.Parsing
                     _knownVariables.Push(captured);
                     Node body = expression();
                     _knownVariables.Pop();
-                    return new Lambda() { CapturedVariable = captured, Body = body };
+                    return new Lambda() { Body = body };
                 }
             }
             return new Error();

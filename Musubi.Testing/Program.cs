@@ -11,6 +11,7 @@ try
             if := \x.x;
             and := \a.\b.a b false;
             or := \a.\b.a true b;
+            not := \x.x false true;
 
             S := \n.\f.\x.f (n f x);
             pred := λn.λf.λx.n (λg.λh.h (g f)) (λu.x) (λu.u);
@@ -21,10 +22,17 @@ try
             <= := \a.\b.IsZero (- a b);
             = := \a.\b.and (<= a b) (<= b a);
             == := =;
+            > := \a.\b.not (<= a b);
+            >= := \a.\b.or (> a b) (= a b);
+
+            fac := λn.λf.n(λf.λn.n(f(λf.λx.n f(f x))))(λx.f)(λx.x);
         in
-            if (== 1 1) then 1 else 0;
+            if (= (fac 5) (pred 121)) then
+                1
+            else 
+                0;
         """,
-        false
+        true
     );
 }
 catch (InvalidOperationException e)

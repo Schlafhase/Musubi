@@ -65,11 +65,11 @@ namespace Musubi.Compiler
                     Console.WriteLine("Syntax Error");
                     break;
                 case Lambda l:
-                    Console.WriteLine($"Lambda ({l.CapturedVariable})");
+                    Console.WriteLine("Lambda");
                     printNode(l.Body, depth + 1);
                     break;
                 case Variable v:
-                    Console.WriteLine($"Variable '{v.Name}'");
+                    Console.WriteLine($"Variable '{v.DeBruijn}'");
                     break;
                 case Number n:
                     Console.WriteLine($"Number '{n.Value}");
