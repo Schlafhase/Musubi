@@ -12,9 +12,26 @@ namespace Musubi.Compiler.Scanning
 
         private static readonly Dictionary<string, TokenType> _keywords = new()
         {
-            { "true", TokenType.True },
-            { "false", TokenType.False },
+            { "let", TokenType.Let },
+            { "in", TokenType.In },
+            { "then", TokenType.Then },
+            { "else", TokenType.Else },
         };
+
+        private static readonly HashSet<char> _disallowedIdentifierChars =
+        [
+            ' ',
+            '\t',
+            '\n',
+            '\r',
+            ':', // because otherwise parsing ":=" would be a bit more difficult
+            '(',
+            ')',
+            '.',
+            '\\',
+            'λ',
+            ';',
+        ];
 
         public List<Token> ScanTokens()
         {
@@ -71,7 +88,7 @@ namespace Musubi.Compiler.Scanning
                     {
                         number();
                     }
-                    else if (alphabetic(c))
+                    else if (!_disallowedIdentifierChars.Contains(c))
                     {
                         identifier();
                     }
@@ -94,7 +111,7 @@ namespace Musubi.Compiler.Scanning
 
         private void identifier()
         {
-            while (alphaNumeric(peek()))
+            while (!_disallowedIdentifierChars.Contains(peek()))
             {
                 advance();
             }

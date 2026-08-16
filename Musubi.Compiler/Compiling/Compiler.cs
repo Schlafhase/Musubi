@@ -1,19 +1,27 @@
+using System.Collections.ObjectModel;
 using System.Reflection;
 using System.Text;
 using Musubi.Compiler.Nodes;
 
 namespace Musubi.Compiler.Compiling
 {
+    internal struct CompilingContext
+    {
+        public StringBuilder CodeBuilder = new();
+        public Dictionary<string, string> DefinitionToCode = [];
+
+        public CompilingContext() { }
+    }
+
     public class Compiler(Node root)
     {
         private readonly StringBuilder _globalCode = new();
 
         private readonly Stack<string> _environment = [];
-        private readonly Dictionary<string, Node> _definitions = [];
 
         public string Compile()
         {
-            StringBuilder context = new();
+            CompilingContext context = new();
             string code = compile(root, context);
             StringBuilder document = new();
             string boilerplate = "";
@@ -28,18 +36,19 @@ namespace Musubi.Compiler.Compiling
             document.Append(boilerplate);
             document.Append(_globalCode.ToString());
             document.Append("int main() {");
-            document.Append(context.ToString());
+            document.Append(context.CodeBuilder.ToString());
             document.Append(@$"printf(""%d\n"", churchToInt({code}));");
             document.Append("}");
             return document.ToString();
         }
 
-        private string compile(Node n, StringBuilder context)
+        private string compile(Node n, CompilingContext context)
         {
             return n switch
             {
                 Document d => compileDocument(d, context),
-                AliasReference r => compile(_definitions[r.Alias], context),
+                LetIn let => compileLetIn(let, context),
+                DefinitionReference r => compileDefinitionReference(r, context),
                 Variable v => compileVariable(v, context),
                 Application a => compileApplication(a, context),
                 Lambda l => compileLambda(l, context),
@@ -50,28 +59,53 @@ namespace Musubi.Compiler.Compiling
             };
         }
 
-        private string compileDocument(Document d, StringBuilder context)
+        private string compileDocument(Document d, CompilingContext context)
         {
-            foreach (Alias def in d.Definitions)
-            {
-                _definitions.Add(def.Name, def.Value);
-            }
             return compile(d.Expression, context);
         }
 
-        private string compileVariable(Variable v, StringBuilder _)
+        private string compileLetIn(LetIn let, CompilingContext context)
+        {
+            CompilingContext innerContext = new()
+            {
+                CodeBuilder = context.CodeBuilder,
+                DefinitionToCode = context.DefinitionToCode.ToDictionary(), // copy
+            };
+            // define a global function for each definition
+            foreach (KeyValuePair<string, Node> def in let.Definitions)
+            {
+                string id = Guid.NewGuid().ToString().Replace("-", "");
+                CompilingContext definitionContext = new()
+                {
+                    DefinitionToCode = innerContext.DefinitionToCode,
+                };
+                string compiledBody = compile(def.Value, definitionContext);
+                _globalCode.Append($"Lambda *d{id}() {{");
+                _globalCode.Append(definitionContext.CodeBuilder.ToString());
+                _globalCode.Append($"return {compiledBody};}}");
+                innerContext.DefinitionToCode[def.Key] = $"d{id}()";
+            }
+            return compile(let.Expression, innerContext);
+        }
+
+        private string compileDefinitionReference(DefinitionReference r, CompilingContext context)
+        {
+            return context.DefinitionToCode[r.Definition];
+        }
+
+        private string compileVariable(Variable v, CompilingContext _)
         {
             return $"env->{v.Name}";
         }
 
-        private string compileApplication(Application a, StringBuilder context)
+        private string compileApplication(Application a, CompilingContext context)
         {
             return $"invoke({compile(a.Function, context)}, {compile(a.Argument, context)})";
         }
 
-        private string compileLambda(Lambda l, StringBuilder context)
+        private string compileLambda(Lambda l, CompilingContext context)
         {
-            StringBuilder innerContext = new();
+            CompilingContext innerContext = new() { DefinitionToCode = context.DefinitionToCode };
             _environment.Push(l.CapturedVariable);
             string body = compile(l.Body, innerContext);
             _environment.Pop();
@@ -89,19 +123,19 @@ namespace Musubi.Compiler.Compiling
             _globalCode.Append($"Lambda *l{l.Id}(void *raw_env, Lambda *{l.CapturedVariable}) {{");
             _globalCode.Append($"e{l.Id} *env = raw_env;");
             _globalCode.Append($"env->{l.CapturedVariable} = {l.CapturedVariable};");
-            _globalCode.Append(innerContext.ToString());
+            _globalCode.Append(innerContext.CodeBuilder.ToString());
             _globalCode.Append($"return {body};");
             _globalCode.Append("}");
 
             // set up the lambda for the actual return value
-            context.Append($"Lambda *_l{l.Id} = malloc(sizeof(Lambda));");
-            context.Append($"_l{l.Id}->fn = &l{l.Id};");
-            context.Append($"e{l.Id} *_e{l.Id} = malloc(sizeof(e{l.Id}));");
+            context.CodeBuilder.Append($"Lambda *_l{l.Id} = malloc(sizeof(Lambda));");
+            context.CodeBuilder.Append($"_l{l.Id}->fn = &l{l.Id};");
+            context.CodeBuilder.Append($"e{l.Id} *_e{l.Id} = malloc(sizeof(e{l.Id}));");
             foreach (string variable in _environment)
             {
-                context.Append($"_e{l.Id}->{variable} = env->{variable};");
+                context.CodeBuilder.Append($"_e{l.Id}->{variable} = env->{variable};");
             }
-            context.Append($"_l{l.Id}->env = _e{l.Id};");
+            context.CodeBuilder.Append($"_l{l.Id}->env = _e{l.Id};");
 
             return $"_l{l.Id}";
         }

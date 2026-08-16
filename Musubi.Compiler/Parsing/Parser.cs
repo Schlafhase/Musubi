@@ -19,20 +19,16 @@ namespace Musubi.Compiler.Parsing
             return root;
         }
 
-        // document: definition* expression
+        // document: expression expressionEndSym?
         private Document document()
         {
-            List<Alias> definitions = [];
-            while (checkNext(TokenType.Identifier, TokenType.Definition))
-            {
-                definitions.Add(definition());
-            }
             Node toplevel = expression();
-            expect("a semicolon", TokenType.StatementEnd);
-            return new() { Definitions = definitions, Expression = toplevel };
+            expect("a semicolon or end of file", TokenType.StatementEnd, TokenType.EOF);
+            return new() { Expression = toplevel };
         }
 
-        private Alias definition()
+        // definition: identifier definitionSym expression expressionEndSym
+        private (string name, Node value) definition()
         {
             string name = identifier();
             if (_definedAliases.Contains(name))
@@ -43,10 +39,10 @@ namespace Musubi.Compiler.Parsing
             Node value = expression();
             expect("a semicolon", TokenType.StatementEnd);
             _definedAliases.Add(name);
-            return new() { Name = name, Value = value };
+            return (name, value);
         }
 
-        // expression: atom atom*
+        // expression: atom (syntaxNoop | atom)*
         private Node expression()
         {
             Node left = atom();
@@ -56,12 +52,16 @@ namespace Musubi.Compiler.Parsing
                     TokenType.Lambda,
                     TokenType.Identifier,
                     TokenType.LeftParen,
-                    TokenType.True,
-                    TokenType.False,
+                    TokenType.Then,
+                    TokenType.Else,
                     TokenType.Number
                 )
             )
             {
+                if (check(TokenType.Then, TokenType.Else))
+                {
+                    continue;
+                }
                 Node right = atom();
                 left = new Application() { Function = left, Argument = right };
             }
@@ -69,7 +69,7 @@ namespace Musubi.Compiler.Parsing
             return left;
         }
 
-        // atom: lambda | variable | "(" expression ")" | true | false
+        // atom: lambda | variable | "(" expression ")" | number | letin
         private Node atom()
         {
             switch (peek().Type)
@@ -84,7 +84,7 @@ namespace Musubi.Compiler.Parsing
                     }
                     else if (_definedAliases.Contains(id))
                     {
-                        return new AliasReference() { Alias = id };
+                        return new DefinitionReference() { Definition = id };
                     }
                     errors.ReportToken(previous(), $"Undefined identifier '{id}'");
                     return new Error();
@@ -96,12 +96,8 @@ namespace Musubi.Compiler.Parsing
                 case TokenType.Number:
                     advance();
                     return new Number() { Value = int.Parse(previous().Lexeme) };
-                case TokenType.True:
-                    advance();
-                    return new True();
-                case TokenType.False:
-                    advance();
-                    return new False();
+                case TokenType.Let:
+                    return letIn();
                 default:
                     errors.ReportUnexpected(peek(), "expression");
                     return new Error();
@@ -121,6 +117,24 @@ namespace Musubi.Compiler.Parsing
                     _knownVariables.Pop();
                     return new Lambda() { CapturedVariable = captured, Body = body };
                 }
+            }
+            return new Error();
+        }
+
+        // letIn: "let" definition* "in" expression
+        private Node letIn()
+        {
+            Dictionary<string, Node> definitions = [];
+            if (expect(TokenType.Let))
+            {
+                while (!check(TokenType.In))
+                {
+                    (string? name, Node? value) = definition();
+                    definitions.Add(name, value);
+                }
+                expect(TokenType.In);
+                Node body = expression();
+                return new LetIn() { Definitions = definitions, Expression = body };
             }
             return new Error();
         }

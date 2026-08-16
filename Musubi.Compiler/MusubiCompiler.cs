@@ -41,13 +41,20 @@ namespace Musubi.Compiler
             {
                 case Document d:
                     Console.WriteLine("Document");
-                    foreach (Alias def in d.Definitions)
+                    printNode(d.Expression, depth + 1);
+                    break;
+                case LetIn l:
+                    Console.WriteLine("Let In");
+                    foreach (KeyValuePair<string, Node> def in l.Definitions)
                     {
                         writeIndent(depth + 1);
-                        Console.WriteLine($"Definition {def.Name}");
+                        Console.WriteLine("Definition " + def.Key);
                         printNode(def.Value, depth + 2);
                     }
-                    printNode(d.Expression, depth + 1);
+                    printNode(l.Expression, depth + 1);
+                    break;
+                case DefinitionReference r:
+                    Console.WriteLine("DefinitionReference " + r.Definition);
                     break;
                 case Application a:
                     Console.WriteLine("Application");

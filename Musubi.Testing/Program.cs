@@ -5,9 +5,12 @@ try
 {
     compiled = MusubiCompiler.Compile(
         """
-        pred := λn.λf.λx.n (λg.λh.h (g f)) (λu.x) (λu.u);
-        fib := λn.λf.n(λc.λa.λb.c b(λx.a (b x)))(λx.λy.x)(λx.x)f;
-        fib 5;
+        let
+            + := 
+                let S := \n.\f.\x.f(n f x);
+                in \a.\b.a S b;
+        in
+                (+ 20 (+ 4 5));
         """,
         false
     );

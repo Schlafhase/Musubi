@@ -1,7 +1,9 @@
-document: definition* expression
+document: expression expressionEndSym?
 definition: identifier definitionSym expression expressionEndSym
-expression: atom atom*
-atom: lambda | variable | "(" expression ")"
+expression: atom (syntaxNoop | atom)*
+atom: lambda | variable | "(" expression ")" | letin
+letin: "let" definition* "in" expression
 lambda: lambdaSym identifier "." expression
 variable: identifier
 lambdaSym: "\" | "λ"
+syntaxNoop: "then" | "else"

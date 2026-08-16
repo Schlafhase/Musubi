@@ -12,8 +12,10 @@ namespace Musubi.Compiler.Scanning
         Identifier,
         Number,
 
-        True,
-        False,
+        Let,
+        In,
+        Then,
+        Else,
 
         EOF,
     }
