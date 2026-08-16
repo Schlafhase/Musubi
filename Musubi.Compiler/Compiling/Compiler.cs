@@ -51,8 +51,6 @@ namespace Musubi.Compiler.Compiling
                 Application a => compileApplication(a, context),
                 Lambda l => compileLambda(l, context),
                 Number no => $"churchNumeral({no.Value})",
-                True => "churchBoolean(1)",
-                False => "churchBoolean(0)",
                 _ => throw new NotImplementedException(n.GetType().Name),
             };
         }

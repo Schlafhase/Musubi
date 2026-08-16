@@ -12,6 +12,14 @@ namespace Musubi.Compiler
             Scanner s = new(source, e);
             List<Token> tokens = s.ScanTokens();
 
+            if (printAST)
+            {
+                foreach (Token t in tokens)
+                {
+                    Console.WriteLine(t.Type + " '" + t.Lexeme + "'");
+                }
+            }
+
             Parser p = new(tokens, e);
             Node root = p.Parse();
 
@@ -69,16 +77,10 @@ namespace Musubi.Compiler
                     printNode(l.Body, depth + 1);
                     break;
                 case Variable v:
-                    Console.WriteLine($"Variable '{v.DeBruijn}'");
+                    Console.WriteLine($"Variable {v.DeBruijn}");
                     break;
                 case Number n:
-                    Console.WriteLine($"Number '{n.Value}");
-                    break;
-                case True:
-                    Console.WriteLine("True");
-                    break;
-                case False:
-                    Console.WriteLine("False");
+                    Console.WriteLine($"Number '{n.Value}'");
                     break;
                 default:
                     Console.WriteLine(root.GetType().Name);

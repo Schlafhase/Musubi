@@ -10,9 +10,11 @@ namespace Musubi.Compiler.Scanning
         StatementEnd,
 
         Identifier,
+        Filename,
         Number,
 
         Let,
+        Include,
         In,
 
         EOF,

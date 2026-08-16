@@ -2,7 +2,7 @@ using Musubi.Compiler.Scanning;
 
 namespace Musubi.Compiler
 {
-    public class Errors(string source)
+    public class Errors(string source, string? filename = null)
     {
         public bool HasErrors { get; private set; }
 
@@ -15,6 +15,11 @@ namespace Musubi.Compiler
             string padding = new(' ', lineNo.Length + column - 1);
             string indicator = new('^', length);
             Console.ForegroundColor = ConsoleColor.Red;
+            if (filename is not null)
+            {
+                Console.Write(filename + ":");
+            }
+            Console.WriteLine(line + ":" + column + ":");
             Console.WriteLine(message);
             Console.ForegroundColor = ConsoleColor.Gray;
             Console.WriteLine(lineNo + sourceLine);
@@ -37,7 +42,7 @@ namespace Musubi.Compiler
         public void ReportUnexpected(Token actual, params TokenType[] expected)
         {
             Report(
-                $"Expected {(expected.Length > 1 ? "one of " : "")}'{string.Join(", ", expected)}' but got '{actual.Type}' instead",
+                $"Expected {(expected.Length > 1 ? "one of " : "")}{string.Join(", ", expected)} but got {actual.Type} instead",
                 actual.Line,
                 actual.Column,
                 actual.Lexeme.Length
@@ -47,7 +52,7 @@ namespace Musubi.Compiler
         public void ReportUnexpected(Token actual, string expected)
         {
             Report(
-                $"Expected {expected} but got '{actual.Type}' instead",
+                $"Expected {expected} but got {actual.Type} instead",
                 actual.Line,
                 actual.Column,
                 actual.Lexeme.Length

@@ -1,3 +1,4 @@
+using System.Data.Common;
 using Musubi.Compiler.Nodes;
 using Musubi.Compiler.Scanning;
 
@@ -19,12 +20,30 @@ namespace Musubi.Compiler.Parsing
             return root;
         }
 
+        public Dictionary<string, Node> ParseModule()
+        {
+            return module();
+        }
+
         // document: expression expressionEndSym?
         private Document document()
         {
             Node toplevel = expression();
             expect("a semicolon or end of file", TokenType.StatementEnd, TokenType.EOF);
             return new() { Expression = toplevel };
+        }
+
+        // module: definition*
+        private Dictionary<string, Node> module()
+        {
+            Dictionary<string, Node> mod = [];
+            while (checkNext(TokenType.Identifier, TokenType.Definition))
+            {
+                (string name, Node value) = definition();
+                mod.Add(name, value);
+            }
+            expect("end of file", TokenType.EOF);
+            return mod;
         }
 
         // definition: identifier definitionSym expression expressionEndSym
@@ -58,7 +77,7 @@ namespace Musubi.Compiler.Parsing
             return left;
         }
 
-        // atom: lambda | variable | "(" expression ")" | number | letin
+        // atom: lambda | variable | "(" expression ")" | number | letin | includein
         private Node atom()
         {
             switch (peek().Type)
@@ -94,6 +113,8 @@ namespace Musubi.Compiler.Parsing
                     return new Number() { Value = int.Parse(previous().Lexeme) };
                 case TokenType.Let:
                     return letIn();
+                case TokenType.Include:
+                    return includeIn();
                 default:
                     errors.ReportUnexpected(peek(), "expression");
                     return new Error();
@@ -135,6 +156,66 @@ namespace Musubi.Compiler.Parsing
             return new Error();
         }
 
+        // includein: "include" (filename expressionEndSym)* "in" expression
+        private Node includeIn()
+        {
+            List<Token> files = [];
+            if (expect(TokenType.Include))
+            {
+                Token includeToken = previous();
+                while (check(TokenType.Filename))
+                {
+                    advance();
+                    files.Add(previous());
+                    expect("a semicolon", TokenType.StatementEnd);
+                }
+                expect("'in' or valid filename (alphanumeric or ~./_-)", TokenType.In);
+                // parse included modules
+                Dictionary<string, Node> definitions = [];
+                foreach (Token mod in files)
+                {
+                    try
+                    {
+                        string source = File.ReadAllText(mod.Lexeme);
+                        Errors modErrors = new(source, mod.Lexeme);
+                        Scanner modScanner = new(source, modErrors);
+                        Parser modParser = new(modScanner.ScanTokens(), modErrors);
+                        Dictionary<string, Node> modDefinitions = modParser.ParseModule();
+
+                        if (modErrors.HasErrors)
+                        {
+                            errors.ReportToken(
+                                mod,
+                                $"Errors in included module {mod.Lexeme}"
+                            );
+                            continue;
+                        }
+
+                        foreach (KeyValuePair<string, Node> def in modDefinitions)
+                        {
+                            _definedAliases.Add(def.Key);
+                            definitions.Add(def.Key, def.Value);
+                        }
+                    }
+                    catch (FileNotFoundException)
+                    {
+                        errors.ReportToken(mod, "Part of the path could not be found");
+                    }
+                    catch (DirectoryNotFoundException)
+                    {
+                        errors.ReportToken(mod, "Part of the path could not be found");
+                    }
+                    catch (ArgumentException)
+                    {
+                        errors.ReportToken(mod, "Invalid path");
+                    }
+                }
+
+                return new LetIn() { Definitions = definitions, Expression = expression() };
+            }
+            return new Error();
+        }
+
         private string identifier()
         {
             expect(TokenType.Identifier);
@@ -162,7 +243,7 @@ namespace Musubi.Compiler.Parsing
         {
             if (endReached())
             {
-                return false;
+                return types.Contains(TokenType.EOF);
             }
             return types.Contains(peek().Type);
         }

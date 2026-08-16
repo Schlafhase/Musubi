@@ -13,12 +13,11 @@ namespace Musubi.Compiler.Scanning
         private static readonly Dictionary<string, TokenType> _keywords = new()
         {
             { "let", TokenType.Let },
+            { "include", TokenType.Include },
             { "in", TokenType.In },
+            { "if", TokenType.LeftParen },
+            { "end", TokenType.RightParen },
         };
-        private static readonly HashSet<string> _ignored = [
-            "then",
-            "else"
-        ];
 
         private static readonly HashSet<char> _disallowedIdentifierChars =
         [
@@ -34,6 +33,8 @@ namespace Musubi.Compiler.Scanning
             'λ',
             ';',
         ];
+
+        private static readonly HashSet<char> _allowedFilenameChars = ['_', '-', '.', '/', '~'];
 
         public List<Token> ScanTokens()
         {
@@ -119,13 +120,61 @@ namespace Musubi.Compiler.Scanning
             }
 
             string text = _source[_start.._current];
-            if (_keywords.TryGetValue(text, out TokenType type))
+            if (text is "else" or "then")
             {
-                addToken(type);
+                addToken(TokenType.RightParen);
+                addToken(TokenType.LeftParen);
             }
-            else if (!_ignored.Contains(text))
+            else if (_keywords.TryGetValue(text, out TokenType type))
+            {
+                if (type == TokenType.Include)
+                {
+                    addToken(type);
+
+                    while (
+                        alphaNumeric(peek())
+                        || _allowedFilenameChars.Contains(peek())
+                        || char.IsWhiteSpace(peek())
+                        || peek() == '\n'
+                        || peek() == '\r'
+                    )
+                    {
+                        while (char.IsWhiteSpace(peek()) || peek() == '\n' || peek() == '\r')
+                        {
+                            if (advance() == '\n')
+                            {
+                                _column = 1;
+                                _line++;
+                            }
+                        }
+                        _start = _current;
+                        filename();
+                    }
+                }
+                else
+                {
+                    addToken(type);
+                }
+            }
+            else
             {
                 addToken(TokenType.Identifier);
+            }
+        }
+
+        private void filename()
+        {
+            while (alphaNumeric(peek()) || _allowedFilenameChars.Contains(peek()))
+            {
+                advance();
+            }
+            if (_current == _start)
+            {
+                errors.Report("Expected filename", _line, _column);
+            }
+            else
+            {
+                addToken(TokenType.Filename);
             }
         }
 
