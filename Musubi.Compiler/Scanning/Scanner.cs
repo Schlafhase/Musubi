@@ -14,9 +14,11 @@ namespace Musubi.Compiler.Scanning
         {
             { "let", TokenType.Let },
             { "in", TokenType.In },
-            { "then", TokenType.Then },
-            { "else", TokenType.Else },
         };
+        private static readonly HashSet<string> _ignored = [
+            "then",
+            "else"
+        ];
 
         private static readonly HashSet<char> _disallowedIdentifierChars =
         [
@@ -121,7 +123,7 @@ namespace Musubi.Compiler.Scanning
             {
                 addToken(type);
             }
-            else
+            else if (!_ignored.Contains(text))
             {
                 addToken(TokenType.Identifier);
             }

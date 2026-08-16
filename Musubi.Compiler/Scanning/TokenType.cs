@@ -14,8 +14,6 @@ namespace Musubi.Compiler.Scanning
 
         Let,
         In,
-        Then,
-        Else,
 
         EOF,
     }

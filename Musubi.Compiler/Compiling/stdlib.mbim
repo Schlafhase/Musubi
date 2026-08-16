@@ -12,4 +12,4 @@ pred := λn.λf.λx.n (λg.λh.h (g f)) (λu.x) (λu.u);
 IsZero := \n.n (\x.false) true;
 <= := \a.\b.IsZero (- a b);
 = := \a.\b.and (<= a b) (<= b a);
-
+== := =;

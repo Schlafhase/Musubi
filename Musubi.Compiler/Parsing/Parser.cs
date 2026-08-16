@@ -52,16 +52,10 @@ namespace Musubi.Compiler.Parsing
                     TokenType.Lambda,
                     TokenType.Identifier,
                     TokenType.LeftParen,
-                    TokenType.Then,
-                    TokenType.Else,
                     TokenType.Number
                 )
             )
             {
-                if (check(TokenType.Then, TokenType.Else))
-                {
-                    continue;
-                }
                 Node right = atom();
                 left = new Application() { Function = left, Argument = right };
             }

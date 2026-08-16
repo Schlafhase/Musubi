@@ -6,11 +6,23 @@ try
     compiled = MusubiCompiler.Compile(
         """
         let
-            + := 
-                let S := \n.\f.\x.f(n f x);
-                in \a.\b.a S b;
+            true := \a.\b.a;
+            false := \a.\b.b;
+            if := \x.x;
+            and := \a.\b.a b false;
+            or := \a.\b.a true b;
+
+            S := \n.\f.\x.f (n f x);
+            pred := λn.λf.λx.n (λg.λh.h (g f)) (λu.x) (λu.u);
+            + := \a.\b.a S b;
+            - := \a.\b.b pred a;
+
+            IsZero := \n.n (\x.false) true;
+            <= := \a.\b.IsZero (- a b);
+            = := \a.\b.and (<= a b) (<= b a);
+            == := =;
         in
-                (+ 20 (+ 4 5));
+            if (== 1 1) then 1 else 0;
         """,
         false
     );
