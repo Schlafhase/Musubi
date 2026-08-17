@@ -18,7 +18,21 @@ namespace Musubi.Compiler
             {
                 foreach (Token t in tokens)
                 {
-                    Console.WriteLine(t.Type + " '" + t.Lexeme + "' at " + t.Filename + ":" + t.Line + ":" + t.Column);
+                    Console.WriteLine(
+                        t.Type
+                            + " '"
+                            + t.Lexeme
+                            + "' at "
+                            + t.Filename
+                            + ":"
+                            + t.Line
+                            + ":"
+                            + t.Column
+                    );
+                }
+                foreach (var kvp in e.FilenameToSource)
+                {
+                    Console.WriteLine(kvp.Key);
                 }
             }
 

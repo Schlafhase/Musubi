@@ -146,7 +146,7 @@ namespace Musubi.Compiler.Parsing
                     if (name is not null)
                     {
                         definitions[name] = value;
-                    _definedAliases.Push(name);
+                        _definedAliases.Push(name);
                     }
                 }
                 expect(TokenType.In);

@@ -140,14 +140,19 @@ namespace Musubi.Compiler.Scanning
             addToken(TokenType.Number, int.Parse(currentLexeme()));
         }
 
-        private void identifier()
+        private string identifierString()
         {
             while (!_disallowedIdentifierChars.Contains(peek()))
             {
                 advance();
             }
 
-            string text = currentLexeme();
+            return currentLexeme();
+        }
+
+        private void identifier()
+        {
+            string text = identifierString();
             if (text == "#define")
             {
                 while (char.IsWhiteSpace(peek()))
@@ -155,25 +160,15 @@ namespace Musubi.Compiler.Scanning
                     advance();
                 }
                 _start = _current;
-                string name = "";
-                char c = advance();
-                if (!char.IsLetter(c))
+                string name = identifierString();
+                if (string.IsNullOrEmpty(name))
                 {
-                    errors.Report(
-                        "Expected macro name (only letters and digits, must begin with a letter)",
-                        filepath,
-                        _line,
-                        _column
-                    );
+                    errors.Report("Expected macro name", filepath, _line, _column);
                     return;
-                }
-                while (char.IsLetterOrDigit(c))
-                {
-                    name += c;
-                    c = advance();
                 }
                 _start = _current;
                 string macroSource = "";
+                char c = advance();
                 while (c != '\n')
                 {
                     macroSource += c;
@@ -273,8 +268,10 @@ namespace Musubi.Compiler.Scanning
                 }
 
                 Errors includeErrors = new();
+
                 includeErrors.FilenameToSource[path] = includeSource;
                 errors.FilenameToSource[path] = includeSource;
+
                 HashSet<string> innerIncludedFrom = [filepath];
                 foreach (string includedFromPath in includedFrom ?? [])
                 {
@@ -298,6 +295,10 @@ namespace Musubi.Compiler.Scanning
                 foreach (KeyValuePair<string, List<Token>> kvp in macros)
                 {
                     _macros[kvp.Key] = kvp.Value;
+                }
+                foreach (var kvp in includeErrors.FilenameToSource)
+                {
+                    errors.FilenameToSource[kvp.Key] = kvp.Value;
                 }
             }
             else if (text == "#once")
