@@ -1,5 +1,6 @@
 using System.Reflection;
 using System.Text;
+
 using Musubi.Compiler.Nodes;
 
 namespace Musubi.Compiler.Compiling
@@ -130,7 +131,7 @@ namespace Musubi.Compiler.Compiling
             context.CodeBuilder.Append($"e{l.Id} *_e{l.Id} = malloc(sizeof(e{l.Id}));");
             for (int i = 0; i < context.VariableCount; i++)
             {
-                context.CodeBuilder.Append($"_e{l.Id}->v{i+1} = env->v{i};");
+                context.CodeBuilder.Append($"_e{l.Id}->v{i + 1} = env->v{i};");
             }
             context.CodeBuilder.Append($"_l{l.Id}->env = _e{l.Id};");
 

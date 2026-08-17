@@ -1,4 +1,3 @@
-using System.Data.Common;
 using Musubi.Compiler.Nodes;
 using Musubi.Compiler.Scanning;
 
@@ -8,7 +7,7 @@ namespace Musubi.Compiler.Parsing
     {
         private int _current;
         private readonly Stack<string> _knownVariables = [];
-        private readonly List<string> _definedAliases = [];
+        private readonly Stack<string> _definedAliases = [];
 
         public Node Parse()
         {
@@ -29,7 +28,7 @@ namespace Musubi.Compiler.Parsing
         private Document document()
         {
             Node toplevel = expression();
-            expect("a semicolon or end of file", TokenType.StatementEnd, TokenType.EOF);
+            expect("a semicolon", TokenType.StatementEnd);
             return new() { Expression = toplevel };
         }
 
@@ -57,7 +56,6 @@ namespace Musubi.Compiler.Parsing
             expect(TokenType.Definition);
             Node value = expression();
             expect("a semicolon", TokenType.StatementEnd);
-            _definedAliases.Add(name);
             return (name, value);
         }
 
@@ -110,11 +108,9 @@ namespace Musubi.Compiler.Parsing
                     return inner;
                 case TokenType.Number:
                     advance();
-                    return new Number() { Value = int.Parse(previous().Lexeme) };
+                    return new Number() { Value = (int)previous().Literal! };
                 case TokenType.Let:
                     return letIn();
-                case TokenType.Include:
-                    return includeIn();
                 default:
                     errors.ReportUnexpected(peek(), "expression");
                     return new Error();
@@ -147,71 +143,19 @@ namespace Musubi.Compiler.Parsing
                 while (!check(TokenType.In))
                 {
                     (string? name, Node? value) = definition();
-                    definitions.Add(name, value);
+                    if (name is not null)
+                    {
+                        definitions[name] = value;
+                    _definedAliases.Push(name);
+                    }
                 }
                 expect(TokenType.In);
                 Node body = expression();
+                foreach (var _ in definitions)
+                {
+                    _definedAliases.Pop();
+                }
                 return new LetIn() { Definitions = definitions, Expression = body };
-            }
-            return new Error();
-        }
-
-        // includein: "include" (filename expressionEndSym)* "in" expression
-        private Node includeIn()
-        {
-            List<Token> files = [];
-            if (expect(TokenType.Include))
-            {
-                Token includeToken = previous();
-                while (check(TokenType.Filename))
-                {
-                    advance();
-                    files.Add(previous());
-                    expect("a semicolon", TokenType.StatementEnd);
-                }
-                expect("'in' or valid filename (alphanumeric or ~./_-)", TokenType.In);
-                // parse included modules
-                Dictionary<string, Node> definitions = [];
-                foreach (Token mod in files)
-                {
-                    try
-                    {
-                        string source = File.ReadAllText(mod.Lexeme);
-                        Errors modErrors = new(source, mod.Lexeme);
-                        Scanner modScanner = new(source, modErrors);
-                        Parser modParser = new(modScanner.ScanTokens(), modErrors);
-                        Dictionary<string, Node> modDefinitions = modParser.ParseModule();
-
-                        if (modErrors.HasErrors)
-                        {
-                            errors.ReportToken(
-                                mod,
-                                $"Errors in included module {mod.Lexeme}"
-                            );
-                            continue;
-                        }
-
-                        foreach (KeyValuePair<string, Node> def in modDefinitions)
-                        {
-                            _definedAliases.Add(def.Key);
-                            definitions.Add(def.Key, def.Value);
-                        }
-                    }
-                    catch (FileNotFoundException)
-                    {
-                        errors.ReportToken(mod, "Part of the path could not be found");
-                    }
-                    catch (DirectoryNotFoundException)
-                    {
-                        errors.ReportToken(mod, "Part of the path could not be found");
-                    }
-                    catch (ArgumentException)
-                    {
-                        errors.ReportToken(mod, "Invalid path");
-                    }
-                }
-
-                return new LetIn() { Definitions = definitions, Expression = expression() };
             }
             return new Error();
         }
@@ -219,7 +163,7 @@ namespace Musubi.Compiler.Parsing
         private string identifier()
         {
             expect(TokenType.Identifier);
-            return previous().Lexeme;
+            return (previous().Literal as string)!;
         }
 
         // helpers

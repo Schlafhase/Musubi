@@ -1,6 +1,12 @@
 namespace Musubi.Compiler.Scanning
 {
-    public class Scanner(string source, Errors errors)
+    public class Scanner(
+        string source,
+        string filepath,
+        Errors errors,
+        HashSet<string>? includedFrom = null,
+        HashSet<string>? includeOnceAlreadyIncluded = null
+    )
     {
         private readonly string _source = source;
         private readonly List<Token> _tokens = [];
@@ -10,13 +16,12 @@ namespace Musubi.Compiler.Scanning
         private int _line = 1;
         private int _column = 1;
 
+        private readonly Dictionary<string, List<Token>> _macros = [];
+
         private static readonly Dictionary<string, TokenType> _keywords = new()
         {
             { "let", TokenType.Let },
-            { "include", TokenType.Include },
             { "in", TokenType.In },
-            { "if", TokenType.LeftParen },
-            { "end", TokenType.RightParen },
         };
 
         private static readonly HashSet<char> _disallowedIdentifierChars =
@@ -32,11 +37,25 @@ namespace Musubi.Compiler.Scanning
             '\\',
             'λ',
             ';',
+            '\0',
         ];
 
         private static readonly HashSet<char> _allowedFilenameChars = ['_', '-', '.', '/', '~'];
 
+        private readonly HashSet<string> _includeOnceAlreadyIncluded =
+            includeOnceAlreadyIncluded ?? [];
+
         public List<Token> ScanTokens()
+        {
+            ScanTokensInIncludedFile();
+            _tokens.Add(new(TokenType.EOF, "", _line, _column + 1, filepath));
+            return [.. _tokens.Where(t => t.Type != TokenType.IncludeOnce)];
+        }
+
+        public (
+            List<Token> tokens,
+            Dictionary<string, List<Token>> macros
+        ) ScanTokensInIncludedFile()
         {
             while (!endReached())
             {
@@ -44,8 +63,7 @@ namespace Musubi.Compiler.Scanning
                 scanToken();
             }
 
-            _tokens.Add(new(TokenType.EOF, "", _line, _column));
-            return _tokens;
+            return (_tokens, _macros);
         }
 
         private void scanToken()
@@ -76,7 +94,12 @@ namespace Musubi.Compiler.Scanning
                         addToken(TokenType.Definition);
                         break;
                     }
-                    errors.Report("Unexpected character ':'. Did you mean ':='?", _line, _column);
+                    errors.Report(
+                        "Unexpected character ':'. Did you mean ':='?",
+                        filepath,
+                        _line,
+                        _column
+                    );
                     break;
                 case ' ':
                 case '\r':
@@ -97,7 +120,12 @@ namespace Musubi.Compiler.Scanning
                     }
                     else
                     {
-                        errors.Report("Unexpected character '" + c + "'", _line, _column - 1); // column - 1 because column refers to the column after advancing
+                        errors.Report(
+                            "Unexpected character '" + c + "'",
+                            filepath,
+                            _line,
+                            _column - 1
+                        ); // column - 1 because column refers to the column after advancing
                     }
                     break;
             }
@@ -109,7 +137,7 @@ namespace Musubi.Compiler.Scanning
             {
                 advance();
             }
-            addToken(TokenType.Number);
+            addToken(TokenType.Number, int.Parse(currentLexeme()));
         }
 
         private void identifier()
@@ -119,50 +147,181 @@ namespace Musubi.Compiler.Scanning
                 advance();
             }
 
-            string text = _source[_start.._current];
-            if (text is "else" or "then")
+            string text = currentLexeme();
+            if (text == "#define")
             {
-                addToken(TokenType.RightParen);
-                addToken(TokenType.LeftParen);
-            }
-            else if (_keywords.TryGetValue(text, out TokenType type))
-            {
-                if (type == TokenType.Include)
+                while (char.IsWhiteSpace(peek()))
                 {
-                    addToken(type);
-
-                    while (
-                        alphaNumeric(peek())
-                        || _allowedFilenameChars.Contains(peek())
-                        || char.IsWhiteSpace(peek())
-                        || peek() == '\n'
-                        || peek() == '\r'
-                    )
-                    {
-                        while (char.IsWhiteSpace(peek()) || peek() == '\n' || peek() == '\r')
-                        {
-                            if (advance() == '\n')
-                            {
-                                _column = 1;
-                                _line++;
-                            }
-                        }
-                        _start = _current;
-                        filename();
-                    }
+                    advance();
+                }
+                _start = _current;
+                string name = "";
+                char c = advance();
+                if (!char.IsLetter(c))
+                {
+                    errors.Report(
+                        "Expected macro name (only letters and digits, must begin with a letter)",
+                        filepath,
+                        _line,
+                        _column
+                    );
+                    return;
+                }
+                while (char.IsLetterOrDigit(c))
+                {
+                    name += c;
+                    c = advance();
+                }
+                _start = _current;
+                string macroSource = "";
+                while (c != '\n')
+                {
+                    macroSource += c;
+                    c = advance();
+                }
+                Errors macroErrors = new();
+                macroErrors.FilenameToSource[$"Macro '{name}' defined in {filepath}"] = macroSource;
+                Scanner macroScanner = new(
+                    macroSource,
+                    $"Macro '{name}' defined in {filepath}",
+                    macroErrors
+                );
+                List<Token> scanResult =
+                [
+                    .. macroScanner.ScanTokens().Where(t => t.Type != TokenType.EOF),
+                ];
+                if (macroErrors.HasErrors)
+                {
+                    errors.Report("Defined macro couldn't be tokenised", filepath, _line, _column);
                 }
                 else
                 {
-                    addToken(type);
+                    _macros[name] = scanResult;
                 }
+                _line++;
+                _column = 1;
+            }
+            else if (text == "#include")
+            {
+                while (char.IsWhiteSpace(peek()))
+                {
+                    advance();
+                }
+                _start = _current;
+                string? path = filename();
+                if (path is null)
+                {
+                    return;
+                }
+                string includeSource = "";
+                try
+                {
+                    path = path.StartsWith("~/")
+                        ? Path.Combine(
+                            Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+                            path[2..]
+                        )
+                        : Path.GetFullPath(path);
+                    includeSource = File.ReadAllText(Path.GetFullPath(path));
+                }
+                catch (FileNotFoundException)
+                {
+                    errors.Report(
+                        "Part of the path could not be found",
+                        filepath,
+                        _line,
+                        _column - (_current - _start),
+                        _current - _start
+                    );
+                }
+                catch (DirectoryNotFoundException)
+                {
+                    errors.Report(
+                        "Part of the path could not be found",
+                        filepath,
+                        _line,
+                        _column - (_current - _start),
+                        _current - _start
+                    );
+                }
+                catch (ArgumentException)
+                {
+                    errors.Report(
+                        "Invalid filepath",
+                        filepath,
+                        _line,
+                        _column - (_current - _start),
+                        _current - _start
+                    );
+                }
+
+                if (_includeOnceAlreadyIncluded.Contains(path))
+                {
+                    return;
+                }
+
+                if (includedFrom?.Contains(path) ?? false)
+                {
+                    errors.Report(
+                        "Circular include",
+                        filepath,
+                        _line,
+                        _column - (_current - _start),
+                        _current - _start
+                    );
+                    return;
+                }
+
+                Errors includeErrors = new();
+                includeErrors.FilenameToSource[path] = includeSource;
+                errors.FilenameToSource[path] = includeSource;
+                HashSet<string> innerIncludedFrom = [filepath];
+                foreach (string includedFromPath in includedFrom ?? [])
+                {
+                    innerIncludedFrom.Add(includedFromPath);
+                }
+                Scanner includeScanner = new(
+                    includeSource,
+                    path,
+                    includeErrors,
+                    innerIncludedFrom,
+                    _includeOnceAlreadyIncluded
+                );
+                (List<Token> tokens, Dictionary<string, List<Token>> macros) =
+                    includeScanner.ScanTokensInIncludedFile();
+                if (tokens.Any(t => t.Type == TokenType.IncludeOnce))
+                {
+                    _includeOnceAlreadyIncluded.Add(path);
+                }
+                _tokens.AddRange(tokens.Where(t => t.Type != TokenType.IncludeOnce));
+                // also define macros from included file
+                foreach (KeyValuePair<string, List<Token>> kvp in macros)
+                {
+                    _macros[kvp.Key] = kvp.Value;
+                }
+            }
+            else if (text == "#once")
+            {
+                addToken(TokenType.IncludeOnce);
+            }
+            else if (_macros?.TryGetValue(text, out var replacement) ?? false)
+            {
+                foreach (Token t in replacement)
+                {
+                    addToken(t.Type, t.Literal);
+                }
+            }
+            else if (_keywords.TryGetValue(text, out TokenType type))
+            {
+                addToken(type);
             }
             else
             {
-                addToken(TokenType.Identifier);
+                addToken(TokenType.Identifier, text);
             }
         }
 
-        private void filename()
+        private string? filename()
         {
             while (alphaNumeric(peek()) || _allowedFilenameChars.Contains(peek()))
             {
@@ -170,16 +329,21 @@ namespace Musubi.Compiler.Scanning
             }
             if (_current == _start)
             {
-                errors.Report("Expected filename", _line, _column);
+                errors.Report("Expected filename", filepath, _line, _column);
+                return null;
             }
             else
             {
-                addToken(TokenType.Filename);
+                return currentLexeme();
             }
         }
 
         private char advance()
         {
+            if (endReached())
+            {
+                return '\0';
+            }
             _column++;
             return _source[_current++];
         }
@@ -191,6 +355,11 @@ namespace Musubi.Compiler.Scanning
                 return '\0';
             }
             return _source[_current + offset];
+        }
+
+        private string currentLexeme()
+        {
+            return _source[_start.._current];
         }
 
         private bool alphabetic(char c)
@@ -208,10 +377,14 @@ namespace Musubi.Compiler.Scanning
             return alphabetic(c) || digit(c);
         }
 
-        private void addToken(TokenType type)
+        private void addToken(TokenType type, object? literal = null)
         {
-            string text = _source[_start.._current];
-            _tokens.Add(new(type, text, _line, _column - (_current - _start)));
+            _tokens.Add(
+                new(type, currentLexeme(), _line, _column - (_current - _start), filepath)
+                {
+                    Literal = literal,
+                }
+            );
         }
 
         private bool endReached()

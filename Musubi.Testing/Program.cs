@@ -5,21 +5,11 @@ try
 {
     compiled = MusubiCompiler.Compile(
         """
-        include
-            /home/Linus/.musubi/stdlib.mbim;
-        in
-        let
-            rec' := \self.\n.
-                if IsZero n then
-                    1
-                else
-                    + n (self (pred n))
-                end;
-            rec := Z (\x.x);
-        in
-            rec 5;
+        #include ~/.musubi/stdlib.mbim
+        if true then 42 else 1 end;
         """,
-        true
+        "main.mbi",
+        false
     );
 }
 catch (InvalidOperationException e)

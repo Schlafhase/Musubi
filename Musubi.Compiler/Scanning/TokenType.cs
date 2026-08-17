@@ -9,13 +9,15 @@ namespace Musubi.Compiler.Scanning
         Definition,
         StatementEnd,
 
+        // literals
         Identifier,
         Filename,
         Number,
 
         Let,
-        Include,
         In,
+
+        IncludeOnce,
 
         EOF,
     }

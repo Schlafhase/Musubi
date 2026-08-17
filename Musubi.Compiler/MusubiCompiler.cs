@@ -6,17 +6,19 @@ namespace Musubi.Compiler
 {
     public static class MusubiCompiler
     {
-        public static string Compile(string source, bool printAST = false)
+        public static string Compile(string source, string filename, bool printAST = false)
         {
-            Errors e = new(source);
-            Scanner s = new(source, e);
+            Errors e = new();
+            e.FilenameToSource[filename] = source;
+
+            Scanner s = new(source, filename, e);
             List<Token> tokens = s.ScanTokens();
 
             if (printAST)
             {
                 foreach (Token t in tokens)
                 {
-                    Console.WriteLine(t.Type + " '" + t.Lexeme + "'");
+                    Console.WriteLine(t.Type + " '" + t.Lexeme + "' at " + t.Filename + ":" + t.Line + ":" + t.Column);
                 }
             }
 

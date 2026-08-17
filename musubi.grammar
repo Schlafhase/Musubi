@@ -1,11 +1,11 @@
-document: expression expressionEndSym?
+document: macro* expression expressionEndSym?
 module: definition*
 definition: identifier definitionSym expression expressionEndSym
-expression: atom (syntaxNoop | atom)*
+expression: atom atom*
 atom: lambda | variable | "(" expression ")" | letin | includein
 letin: "let" definition* "in" expression
 includein: "include" (filename expressionEndSym)* "in" expression
 lambda: lambdaSym identifier "." expression
 variable: identifier
 lambdaSym: "\" | "λ"
-syntaxNoop: "then" | "else"
+macro: "#define" identifier .+
