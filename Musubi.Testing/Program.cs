@@ -5,25 +5,12 @@ try
 {
     compiled = MusubiCompiler.Compile(
         """
-        #define -> .
-        #include ~/.musubi/stdlib.mbim
-        let
-            x := let z := 0; in z;
-            x := let z := 1; in z;
-            true := false;
-            sum' := \sum -> \n ->
-                if IsZero n then
-                    0
-                else
-                    + n (sum (pred n)) 
-                end;
-            sum := rec sum';
-            sum5e := sum 5;
-        in
-            y;
-        """,
+#define -> .
+#include ~/.musubi/stdlib.mbim
+head (cons 15 (: 2 (: 3 nil)))
+""",
         "main.mbi",
-        false
+        true
     );
 }
 catch (InvalidOperationException e)

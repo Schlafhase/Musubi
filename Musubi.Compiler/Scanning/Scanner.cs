@@ -30,13 +30,13 @@ namespace Musubi.Compiler.Scanning
             '\t',
             '\n',
             '\r',
-            ':', // because otherwise parsing ":=" would be a bit more difficult
             '(',
             ')',
             '.',
             '\\',
             'λ',
             ';',
+            ',',
             '\0',
         ];
 
@@ -84,8 +84,14 @@ namespace Musubi.Compiler.Scanning
                 case 'λ':
                     addToken(TokenType.Lambda);
                     break;
+                case ',':
+                    addToken(TokenType.ListSeparator);
+                    break;
                 case ';':
-                    addToken(TokenType.StatementEnd);
+                    while (!endReached() && peek() != '\n')
+                    {
+                        advance();
+                    }
                     break;
                 case ':':
                     if (peek() == '=')
@@ -94,12 +100,10 @@ namespace Musubi.Compiler.Scanning
                         addToken(TokenType.Definition);
                         break;
                     }
-                    errors.Report(
-                        "Unexpected character ':'. Did you mean ':='?",
-                        filepath,
-                        _line,
-                        _column
-                    );
+                    else
+                    {
+                        identifier();
+                    }
                     break;
                 case ' ':
                 case '\r':

@@ -28,7 +28,6 @@ namespace Musubi.Compiler.Parsing
         private Document document()
         {
             Node toplevel = expression();
-            expect("a semicolon", TokenType.StatementEnd);
             return new() { Expression = toplevel };
         }
 
@@ -55,7 +54,6 @@ namespace Musubi.Compiler.Parsing
             }
             expect(TokenType.Definition);
             Node value = expression();
-            expect("a semicolon", TokenType.StatementEnd);
             return (name, value);
         }
 
@@ -140,16 +138,25 @@ namespace Musubi.Compiler.Parsing
             Dictionary<string, Node> definitions = [];
             if (expect(TokenType.Let))
             {
-                while (!check(TokenType.In))
+                if (previous().Filename == "/home/Linus/.musubi/boolean.mbim")
+                {
+                    Console.WriteLine("im here");
+                }
+                for (; ; )
                 {
                     (string? name, Node? value) = definition();
-                    if (name is not null)
+                    if (name is null)
                     {
-                        definitions[name] = value;
-                        _definedAliases.Push(name);
+                        return new Error();
+                    }
+                    definitions[name] = value;
+                    _definedAliases.Push(name);
+                    if (!match(TokenType.ListSeparator))
+                    {
+                        break;
                     }
                 }
-                expect(TokenType.In);
+                expect("'in' or a comma", TokenType.In);
                 Node body = expression();
                 foreach (var _ in definitions)
                 {

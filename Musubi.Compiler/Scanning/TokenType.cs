@@ -7,7 +7,7 @@ namespace Musubi.Compiler.Scanning
         Dot,
         Lambda,
         Definition,
-        StatementEnd,
+        ListSeparator,
 
         // literals
         Identifier,
