@@ -8,6 +8,7 @@ namespace Musubi.Compiler.Scanning
         public readonly int Line = line;
         public readonly int Column = column;
         public readonly string Filename = filename;
+        public CodeRange Range = new(new(filename, line, column), lexeme.Length);
 
         public override string ToString()
         {

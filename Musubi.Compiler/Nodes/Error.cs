@@ -1,4 +1,4 @@
 namespace Musubi.Compiler.Nodes
 {
-    public sealed class Error : Node;
+    public sealed class SyntaxError : Node;
 }

@@ -30,10 +30,6 @@ namespace Musubi.Compiler
                             + t.Column
                     );
                 }
-                foreach (var kvp in e.FilenameToSource)
-                {
-                    Console.WriteLine(kvp.Key);
-                }
             }
 
             Parser p = new(tokens, e);
@@ -44,9 +40,20 @@ namespace Musubi.Compiler
                 printNode(root);
             }
 
+            e.ReportAll();
             if (e.HasErrors)
             {
-                throw new InvalidOperationException("The source has errors. Can't compile.");
+                throw new InvalidOperationException(
+                    $"The source has {e.Items.Count(i => i.Severity == Severity.Error)} errors and cannot be compiled."
+                );
+            }
+
+            int warningsCount = e.Items.Count(i => i.Severity == Severity.Warning);
+            if (warningsCount > 0)
+            {
+                Console.ForegroundColor = ConsoleColor.Yellow;
+                Console.WriteLine($"Compiling with {warningsCount} warnings.");
+                Console.ForegroundColor = ConsoleColor.Gray;
             }
 
             Compiling.Compiler c = new(root);
@@ -85,7 +92,7 @@ namespace Musubi.Compiler
                     printNode(a.Function, depth + 1);
                     printNode(a.Argument, depth + 1);
                     break;
-                case Error:
+                case SyntaxError:
                     Console.WriteLine("Syntax Error");
                     break;
                 case Lambda l:

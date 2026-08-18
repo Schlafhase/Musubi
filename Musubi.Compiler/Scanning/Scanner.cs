@@ -5,7 +5,8 @@ namespace Musubi.Compiler.Scanning
         string filepath,
         Errors errors,
         HashSet<string>? includedFrom = null,
-        HashSet<string>? includeOnceAlreadyIncluded = null
+        HashSet<string>? includeOnceAlreadyIncluded = null,
+        Dictionary<string, List<Token>>? macros = null
     )
     {
         private readonly string _source = source;
@@ -16,7 +17,7 @@ namespace Musubi.Compiler.Scanning
         private int _line = 1;
         private int _column = 1;
 
-        private readonly Dictionary<string, List<Token>> _macros = [];
+        private readonly Dictionary<string, List<Token>> _macros = macros ?? [];
 
         private static readonly Dictionary<string, TokenType> _keywords = new()
         {
@@ -124,7 +125,7 @@ namespace Musubi.Compiler.Scanning
                     }
                     else
                     {
-                        errors.Report(
+                        errors.Error(
                             "Unexpected character '" + c + "'",
                             filepath,
                             _line,
@@ -167,7 +168,7 @@ namespace Musubi.Compiler.Scanning
                 string name = identifierString();
                 if (string.IsNullOrEmpty(name))
                 {
-                    errors.Report("Expected macro name", filepath, _line, _column);
+                    errors.Error("Expected macro name", filepath, _line, _column);
                     return;
                 }
                 _start = _current;
@@ -191,7 +192,7 @@ namespace Musubi.Compiler.Scanning
                 ];
                 if (macroErrors.HasErrors)
                 {
-                    errors.Report("Defined macro couldn't be tokenised", filepath, _line, _column);
+                    errors.Error("Defined macro couldn't be tokenised", filepath, _line, _column);
                 }
                 else
                 {
@@ -225,7 +226,7 @@ namespace Musubi.Compiler.Scanning
                 }
                 catch (FileNotFoundException)
                 {
-                    errors.Report(
+                    errors.Error(
                         "Part of the path could not be found",
                         filepath,
                         _line,
@@ -235,7 +236,7 @@ namespace Musubi.Compiler.Scanning
                 }
                 catch (DirectoryNotFoundException)
                 {
-                    errors.Report(
+                    errors.Error(
                         "Part of the path could not be found",
                         filepath,
                         _line,
@@ -245,7 +246,7 @@ namespace Musubi.Compiler.Scanning
                 }
                 catch (ArgumentException)
                 {
-                    errors.Report(
+                    errors.Error(
                         "Invalid filepath",
                         filepath,
                         _line,
@@ -261,7 +262,7 @@ namespace Musubi.Compiler.Scanning
 
                 if (includedFrom?.Contains(path) ?? false)
                 {
-                    errors.Report(
+                    errors.Error(
                         "Circular include",
                         filepath,
                         _line,
@@ -286,7 +287,8 @@ namespace Musubi.Compiler.Scanning
                     path,
                     includeErrors,
                     innerIncludedFrom,
-                    _includeOnceAlreadyIncluded
+                    _includeOnceAlreadyIncluded,
+                    _macros
                 );
                 (List<Token> tokens, Dictionary<string, List<Token>> macros) =
                     includeScanner.ScanTokensInIncludedFile();
@@ -334,7 +336,7 @@ namespace Musubi.Compiler.Scanning
             }
             if (_current == _start)
             {
-                errors.Report("Expected filename", filepath, _line, _column);
+                errors.Error("Expected filename", filepath, _line, _column);
                 return null;
             }
             else

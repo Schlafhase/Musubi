@@ -6,22 +6,21 @@ namespace Musubi.Compiler.Parsing
     public class Parser(List<Token> tokens, Errors errors)
     {
         private int _current;
+
+        // keeps track of variables (captured by labdas) in the current context
         private readonly Stack<string> _knownVariables = [];
-        private readonly Stack<string> _definedAliases = [];
+
+        // keeps track of aliases (using :=) in the current context
+        private readonly Stack<(string name, CodeRange definedAt)> _definedAliases = [];
 
         public Node Parse()
         {
             Node root = document();
             if (!endReached())
             {
-                errors.ReportUnexpected(peek(), "end of file");
+                errors.UnexpectedError(peek(), "end of file");
             }
             return root;
-        }
-
-        public Dictionary<string, Node> ParseModule()
-        {
-            return module();
         }
 
         // document: expression expressionEndSym?
@@ -31,30 +30,25 @@ namespace Musubi.Compiler.Parsing
             return new() { Expression = toplevel };
         }
 
-        // module: definition*
-        private Dictionary<string, Node> module()
-        {
-            Dictionary<string, Node> mod = [];
-            while (checkNext(TokenType.Identifier, TokenType.Definition))
-            {
-                (string name, Node value) = definition();
-                mod.Add(name, value);
-            }
-            expect("end of file", TokenType.EOF);
-            return mod;
-        }
-
         // definition: identifier definitionSym expression expressionEndSym
-        private (string name, Node value) definition()
+        private (string name, CodeRange definedAt, Node value) definition()
         {
             string name = identifier();
-            if (_definedAliases.Contains(name))
+            Token idToken = previous();
+            (string name, CodeRange definedAt)[] previousDefinitions =
+            [
+                .. _definedAliases.Where(a => a.name == name),
+            ];
+            if (previousDefinitions.Length > 0)
             {
-                errors.ReportToken(previous(), $"Duplicate definition of alias '{name}'");
+                errors.TokenHint(
+                    previous(),
+                    $"Redefinition of '{name}' hides the previous definition of '{name}' at {previousDefinitions[0].definedAt.Location}"
+                );
             }
             expect(TokenType.Definition);
             Node value = expression();
-            return (name, value);
+            return (name, idToken.Range, value);
         }
 
         // expression: atom (syntaxNoop | atom)*
@@ -93,12 +87,12 @@ namespace Musubi.Compiler.Parsing
                         }
                         debruijn++;
                     }
-                    if (_definedAliases.Contains(id))
+                    if (_definedAliases.Any(a => a.name == id))
                     {
                         return new DefinitionReference() { Definition = id };
                     }
-                    errors.ReportToken(previous(), $"Undefined identifier '{id}'");
-                    return new Error();
+                    errors.TokenError(previous(), $"Undefined identifier '{id}'");
+                    return new SyntaxError();
                 case TokenType.LeftParen:
                     advance();
                     Node inner = expression();
@@ -110,8 +104,8 @@ namespace Musubi.Compiler.Parsing
                 case TokenType.Let:
                     return letIn();
                 default:
-                    errors.ReportUnexpected(peek(), "expression");
-                    return new Error();
+                    errors.UnexpectedError(peek(), "expression");
+                    return new SyntaxError();
             }
         }
 
@@ -129,7 +123,7 @@ namespace Musubi.Compiler.Parsing
                     return new Lambda() { Body = body };
                 }
             }
-            return new Error();
+            return new SyntaxError();
         }
 
         // letIn: "let" definition* "in" expression
@@ -138,19 +132,20 @@ namespace Musubi.Compiler.Parsing
             Dictionary<string, Node> definitions = [];
             if (expect(TokenType.Let))
             {
-                if (previous().Filename == "/home/Linus/.musubi/boolean.mbim")
+                if (match(TokenType.In))
                 {
-                    Console.WriteLine("im here");
+                    errors.TokenError(previous(), "Empty let-in expression");
+                    return new SyntaxError();
                 }
                 for (; ; )
                 {
-                    (string? name, Node? value) = definition();
+                    (string? name, CodeRange? definedAt, Node? value) = definition();
                     if (name is null)
                     {
-                        return new Error();
+                        return new SyntaxError();
                     }
                     definitions[name] = value;
-                    _definedAliases.Push(name);
+                    _definedAliases.Push((name, definedAt));
                     if (!match(TokenType.ListSeparator))
                     {
                         break;
@@ -164,7 +159,7 @@ namespace Musubi.Compiler.Parsing
                 }
                 return new LetIn() { Definitions = definitions, Expression = body };
             }
-            return new Error();
+            return new SyntaxError();
         }
 
         private string identifier()
@@ -233,7 +228,7 @@ namespace Musubi.Compiler.Parsing
                 return true;
             }
             Token next = peek();
-            errors.ReportUnexpected(next, types);
+            errors.UnexpectedError(next, types);
             return false;
         }
 
@@ -244,7 +239,7 @@ namespace Musubi.Compiler.Parsing
                 return true;
             }
             Token next = peek();
-            errors.ReportUnexpected(next, expected);
+            errors.UnexpectedError(next, expected);
             return false;
         }
 

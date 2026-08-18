@@ -7,10 +7,10 @@ try
         """
 #define -> .
 #include ~/.musubi/stdlib.mbim
-head (cons 15 (: 2 (: 3 nil)))
+    false 1 0
 """,
         "main.mbi",
-        true
+        false
     );
 }
 catch (InvalidOperationException e)
