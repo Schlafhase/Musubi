@@ -13,6 +13,7 @@ namespace Musubi.Compiler.Scanning
         Identifier,
         Filename,
         Number,
+        ChurchNumber,
 
         Let,
         In,

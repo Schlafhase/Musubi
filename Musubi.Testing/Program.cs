@@ -6,11 +6,11 @@ try
     compiled = MusubiCompiler.Compile(
         """
 #define -> .
-#include ~/.musubi/stdlib.mbim
-    false 1 0
+#include stdlib
+false (cons 62 nil) nil
 """,
         "main.mbi",
-        false
+        true
     );
 }
 catch (InvalidOperationException e)

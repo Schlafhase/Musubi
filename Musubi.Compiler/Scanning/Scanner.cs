@@ -142,7 +142,14 @@ namespace Musubi.Compiler.Scanning
             {
                 advance();
             }
-            addToken(TokenType.Number, int.Parse(currentLexeme()));
+            int value = int.Parse(currentLexeme());
+            if (peek() == 'c')
+            {
+                advance();
+                addToken(TokenType.ChurchNumber, value);
+                return;
+            }
+            addToken(TokenType.Number, value);
         }
 
         private string identifierString()
@@ -216,18 +223,13 @@ namespace Musubi.Compiler.Scanning
                 string includeSource = "";
                 try
                 {
-                    path = path.StartsWith("~/")
-                        ? Path.Combine(
-                            Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
-                            path[2..]
-                        )
-                        : Path.GetFullPath(path);
+                    path = FileLookup.GetPath(path);
                     includeSource = File.ReadAllText(Path.GetFullPath(path));
                 }
                 catch (FileNotFoundException)
                 {
                     errors.Error(
-                        "Part of the path could not be found",
+                        "The requested module couldn't be found in any of the library directories",
                         filepath,
                         _line,
                         _column - (_current - _start),
@@ -292,6 +294,7 @@ namespace Musubi.Compiler.Scanning
                 );
                 (List<Token> tokens, Dictionary<string, List<Token>> macros) =
                     includeScanner.ScanTokensInIncludedFile();
+                includeErrors.ReportAll();
                 if (tokens.Any(t => t.Type == TokenType.IncludeOnce))
                 {
                     _includeOnceAlreadyIncluded.Add(path);

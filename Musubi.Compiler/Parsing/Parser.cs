@@ -57,7 +57,7 @@ namespace Musubi.Compiler.Parsing
             Node left = atom();
 
             while (
-                check(TokenType.Lambda, TokenType.Identifier, TokenType.LeftParen, TokenType.Number)
+                check(TokenType.Lambda, TokenType.Identifier, TokenType.LeftParen, TokenType.Number, TokenType.ChurchNumber)
             )
             {
                 Node right = atom();
@@ -101,6 +101,9 @@ namespace Musubi.Compiler.Parsing
                 case TokenType.Number:
                     advance();
                     return new Number() { Value = (int)previous().Literal! };
+                case TokenType.ChurchNumber:
+                    advance();
+                    return new Number() { Value = (int)previous().Literal!, ChurchEncoded = true };
                 case TokenType.Let:
                     return letIn();
                 default:

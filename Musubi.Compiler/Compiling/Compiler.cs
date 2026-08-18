@@ -1,6 +1,5 @@
 using System.Reflection;
 using System.Text;
-
 using Musubi.Compiler.Nodes;
 
 namespace Musubi.Compiler.Compiling
@@ -36,7 +35,7 @@ namespace Musubi.Compiler.Compiling
             document.Append(_globalCode.ToString());
             document.Append("int main() {");
             document.Append(context.CodeBuilder.ToString());
-            document.Append(@$"printf(""%d\n"", churchToInt({code}));");
+            document.Append($"printScottString({code});");
             document.Append("}");
             return document.ToString();
         }
@@ -51,7 +50,9 @@ namespace Musubi.Compiler.Compiling
                 Variable v => compileVariable(v, context),
                 Application a => compileApplication(a, context),
                 Lambda l => compileLambda(l, context),
-                Number no => $"churchNumeral({no.Value})",
+                Number no => no.ChurchEncoded
+                    ? $"churchNumeral({no.Value})"
+                    : $"scottNumeral({no.Value})",
                 _ => throw new NotImplementedException(n.GetType().Name),
             };
         }
