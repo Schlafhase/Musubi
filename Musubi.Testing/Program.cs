@@ -7,7 +7,7 @@ try
         """
 #define -> .
 #include stdlib
-false (cons 62 nil) nil
+cons 'H' (cons 'e' (cons 'l' (cons 'l' (cons 'o' (cons ' ' (cons 'W' (cons 'o' (cons 'r' (cons 'l' (cons 'd' (cons '!' nil)))))))))))
 """,
         "main.mbi",
         true

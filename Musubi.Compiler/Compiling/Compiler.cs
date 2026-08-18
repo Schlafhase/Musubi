@@ -78,9 +78,16 @@ namespace Musubi.Compiler.Compiling
                     DefinitionToCode = innerContext.DefinitionToCode,
                 };
                 string compiledBody = compile(def.Value, definitionContext);
+                _globalCode.AppendLine();
+                _globalCode.AppendLine($"// {def.Key}");
+                // Caching after first evaluation
+                _globalCode.Append($"Lambda *d{id}cached = NULL;");
+                // Actual definition (lambda that returns the body)
                 _globalCode.Append($"Lambda *d{id}() {{");
                 _globalCode.Append(definitionContext.CodeBuilder.ToString());
-                _globalCode.Append($"return {compiledBody};}}");
+                _globalCode.Append(
+                    $"if (d{id}cached == NULL) d{id}cached = {compiledBody}; return d{id}cached;}}"
+                );
                 innerContext.DefinitionToCode[def.Key] = $"d{id}()";
             }
             return compile(let.Expression, innerContext);

@@ -119,6 +119,20 @@ namespace Musubi.Compiler.Scanning
                     {
                         number();
                     }
+                    else if (c == '\'')
+                    {
+                        // try to parse character literal
+                        char value = advance();
+                        if (advance() == '\'' && _disallowedIdentifierChars.Contains(peek()))
+                        {
+                            advance();
+                            addToken(TokenType.ScottNumber, (int)value);
+                        }
+                        else
+                        {
+                            identifier();
+                        }
+                    }
                     else if (!_disallowedIdentifierChars.Contains(c))
                     {
                         identifier();
@@ -149,7 +163,13 @@ namespace Musubi.Compiler.Scanning
                 addToken(TokenType.ChurchNumber, value);
                 return;
             }
-            addToken(TokenType.Number, value);
+            else if (peek() == 's')
+            {
+                advance();
+                addToken(TokenType.ScottNumber, value);
+                return;
+            }
+            addToken(TokenType.ScottNumber, value);
         }
 
         private string identifierString()
@@ -294,7 +314,7 @@ namespace Musubi.Compiler.Scanning
                 );
                 (List<Token> tokens, Dictionary<string, List<Token>> macros) =
                     includeScanner.ScanTokensInIncludedFile();
-                includeErrors.ReportAll();
+                errors.Items.AddRange(includeErrors.Items);
                 if (tokens.Any(t => t.Type == TokenType.IncludeOnce))
                 {
                     _includeOnceAlreadyIncluded.Add(path);

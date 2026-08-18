@@ -12,7 +12,7 @@ namespace Musubi.Compiler.Scanning
         // literals
         Identifier,
         Filename,
-        Number,
+        ScottNumber,
         ChurchNumber,
 
         Let,

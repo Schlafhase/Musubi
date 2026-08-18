@@ -57,7 +57,13 @@ namespace Musubi.Compiler.Parsing
             Node left = atom();
 
             while (
-                check(TokenType.Lambda, TokenType.Identifier, TokenType.LeftParen, TokenType.Number, TokenType.ChurchNumber)
+                check(
+                    TokenType.Lambda,
+                    TokenType.Identifier,
+                    TokenType.LeftParen,
+                    TokenType.ScottNumber,
+                    TokenType.ChurchNumber
+                )
             )
             {
                 Node right = atom();
@@ -98,7 +104,7 @@ namespace Musubi.Compiler.Parsing
                     Node inner = expression();
                     expect("closing parenthesis", TokenType.RightParen);
                     return inner;
-                case TokenType.Number:
+                case TokenType.ScottNumber:
                     advance();
                     return new Number() { Value = (int)previous().Literal! };
                 case TokenType.ChurchNumber:
@@ -142,6 +148,10 @@ namespace Musubi.Compiler.Parsing
                 }
                 for (; ; )
                 {
+                    if (check(TokenType.In)) // Allow optional comma on last definition
+                    {
+                        break;
+                    }
                     (string? name, CodeRange? definedAt, Node? value) = definition();
                     if (name is null)
                     {

@@ -66,7 +66,7 @@ namespace Musubi.Compiler
             writeColoured(line + ":" + column + ":", item.Severity);
             Report(item); // for the message
             Console.WriteLine(lineNo + sourceLine);
-            writeColoured(padding + indicator + " Here", Severity.Hint);
+            writeColoured(padding + indicator + " Here", item.Severity);
             Console.WriteLine();
         }
 
