@@ -138,7 +138,7 @@ Lambda *probeConsOuter(void *raw_env, Lambda *x) {
 
 Lambda *makeProbeCons() {
   Lambda *ret = malloc(sizeof(Lambda));
-  ret->fn = &probeConsInner;
+  ret->fn = &probeConsOuter;
   ret->env = NULL;
   return ret;
 }
