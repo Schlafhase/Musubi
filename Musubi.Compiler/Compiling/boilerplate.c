@@ -143,12 +143,28 @@ Lambda *makeProbeCons() {
   return ret;
 }
 
+Lambda *forceErrorMessageFn(void *_, Lambda *__) {
+  printf(
+      "\nThe expression a program returns is treated like a lazy scott encoded "
+      "list but the computed result doesn't seem to match that expectation. "
+      "The resulting expression cannot be printed.\n");
+  exit(1);
+}
+
+Lambda *makeForceErrorMessage() {
+  Lambda *ret = malloc(sizeof(Lambda));
+  ret->fn = &forceErrorMessageFn;
+  ret->env = NULL;
+  return ret;
+}
+
 void printScottString(Lambda *n) {
   int count = 0;
   Lambda *current = n;
+  Lambda *zeroMarker = makeZeroMarker();
+  Lambda *forceErrorProbe = makeForceErrorMessage();
+  Lambda *cProbe = makeProbeCons();
   while (1) {
-    Lambda *zeroMarker = makeZeroMarker();
-    Lambda *cProbe = makeProbeCons();
     // zeroMarker if current is zero otherwise sProbe the return value of sProbe
     // (which is NULL)
     Lambda *result = invoke(invoke(current, zeroMarker), cProbe);
@@ -161,7 +177,9 @@ void printScottString(Lambda *n) {
     string[0] = scottToInt(cenv->x);
     string[1] = '\0';
     printf("%s", string);
-    current = cenv->xs;
+    current = invoke(
+        cenv->xs,
+        forceErrorProbe); // force (because the list is assumed to be lazy)
     count++;
   }
 }

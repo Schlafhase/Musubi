@@ -7,7 +7,7 @@ try
         """
 #define -> .
 #include stdlib
-cons 'H' (cons 'e' (cons 'l' (cons 'l' (cons 'o' (cons ' ' (cons 'W' (cons 'o' (cons 'r' (cons 'l' (cons 'd' (cons '!' nil)))))))))))
+scottToString (length (take 255 naturals))
 """,
         "main.mbi",
         true

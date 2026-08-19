@@ -35,6 +35,20 @@ namespace Musubi.Compiler.Parsing
         {
             string name = identifier();
             Token idToken = previous();
+            if (name.Length >= 3 && name[0] == '\'' && name[2] == '\'')
+            {
+                errors.TokenWarning(
+                    idToken,
+                    "Identifier looks like a character literal. If this is intentional, consider renaming it because it makes code unreadable."
+                );
+            }
+            if (name[0] == '\"' && name[1..].Contains('"'))
+            {
+                errors.TokenWarning(
+                    idToken,
+                    "Identifier looks like a string literal. If this is intentional, consider renaming it because it makes code unreadable."
+                );
+            }
             (string name, CodeRange definedAt)[] previousDefinitions =
             [
                 .. _definedAliases.Where(a => a.name == name),

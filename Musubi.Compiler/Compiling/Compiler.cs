@@ -35,7 +35,9 @@ namespace Musubi.Compiler.Compiling
             document.Append(_globalCode.ToString());
             document.Append("int main() {");
             document.Append(context.CodeBuilder.ToString());
-            document.Append($"printScottString({code});");
+            document.Append($"Lambda *result = {code};");
+            document.Append("printf(\"printing now\\n\");");
+            document.Append("printScottString(result);");
             document.Append("}");
             return document.ToString();
         }

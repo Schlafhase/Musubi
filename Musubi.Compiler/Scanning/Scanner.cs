@@ -123,15 +123,70 @@ namespace Musubi.Compiler.Scanning
                     {
                         // try to parse character literal
                         char value = advance();
+                        if (value == '\\')
+                        {
+                            switch (advance())
+                            {
+                                case '\\':
+                                    value = '\\';
+                                    break;
+                                case '\'':
+                                    value = '\'';
+                                    break;
+                                case 'n':
+                                    value = '\n';
+                                    break;
+                                case 't':
+                                    value = '\t';
+                                    break;
+                                default:
+                                    errors.Error(@"Unknown escape sequence. To escape a \ use ""\\""", filepath, _line, _column, 2);
+                                    break;
+                            }
+                        }
                         if (advance() == '\'' && _disallowedIdentifierChars.Contains(peek()))
                         {
-                            advance();
                             addToken(TokenType.ScottNumber, (int)value);
                         }
                         else
                         {
                             identifier();
                         }
+                    }
+                    else if (c == '\"')
+                    {
+                        addToken(TokenType.LeftParen);
+                        while (peek() != '\"')
+                        {
+                            _start = _current;
+                            char value = advance();
+                            if (value == '\\')
+                            {
+                                switch (advance())
+                                {
+                                    case '\\':
+                                        value = '\\';
+                                        break;
+                                    case '\'':
+                                        value = '\'';
+                                        break;
+                                    case 'n':
+                                        value = '\n';
+                                        break;
+                                    case 't':
+                                        value = '\t';
+                                        break;
+                                    default:
+                                        errors.Error(@"Unknown escape sequence. To escape a \ use ""\\""", filepath, _line, _column, 2);
+                                        break;
+                                }
+                            }
+                            addToken(TokenType.ScottNumber, (int)value);
+                            addToken(TokenType.Identifier, ":");
+                        }
+                        advance();
+                        addToken(TokenType.Identifier, "nil");
+                        addToken(TokenType.RightParen);
                     }
                     else if (!_disallowedIdentifierChars.Contains(c))
                     {
