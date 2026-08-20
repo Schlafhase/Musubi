@@ -198,9 +198,6 @@ namespace Musubi.Compiler.Scanning
                             }
                             addToken(TokenType.ScottNumber, (int)value);
                             addToken(TokenType.Identifier, ":");
-                            addToken(TokenType.Lambda);
-                            addToken(TokenType.Identifier, "_");
-                            addToken(TokenType.Dot);
                         }
                         if (peek() == '"')
                         {

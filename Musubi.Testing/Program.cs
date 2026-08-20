@@ -6,6 +6,11 @@ try
     compiled = MusubiCompiler.Compile(
         """
 #include stdlib
+#include stdlib/lazyLists.mbim
+let
+  numbers := grab 5 naturals
+in
+  toString<List<ints>> (numbers)
 """,
         "main.mbi",
         true

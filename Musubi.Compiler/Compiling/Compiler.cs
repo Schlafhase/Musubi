@@ -69,12 +69,16 @@ namespace Musubi.Compiler.Compiling
             CompilingContext innerContext = new()
             {
                 CodeBuilder = context.CodeBuilder,
+                VariableCount = context.VariableCount, // copy
                 DefinitionToCode = context.DefinitionToCode.ToDictionary(), // copy
             };
             // define a global function for each definition
             foreach (KeyValuePair<string, Node> def in let.Definitions)
             {
                 string id = Guid.NewGuid().ToString().Replace("-", "");
+                // NOTE: Variable count = 0 is okay here because let in nodes
+                // may only contain definitions that do not depend on outer
+                // variables
                 CompilingContext definitionContext = new()
                 {
                     DefinitionToCode = innerContext.DefinitionToCode,
@@ -128,8 +132,8 @@ namespace Musubi.Compiler.Compiling
             _globalCode.Append($"}} e{l.Id};");
 
             // define function
-                _globalCode.AppendLine();
-                _globalCode.AppendLine($"// {l.DebugIdentifier}");
+            _globalCode.AppendLine();
+            _globalCode.AppendLine($"// {l.DebugIdentifier}");
             _globalCode.Append($"Lambda *l{l.Id}(void *raw_env, Lambda *arg) {{");
             _globalCode.Append($"e{l.Id} *env = raw_env;");
             _globalCode.Append("env->v0 = arg;");
