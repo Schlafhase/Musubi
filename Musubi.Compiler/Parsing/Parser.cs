@@ -253,13 +253,14 @@ namespace Musubi.Compiler.Parsing
         {
             if (expect(TokenType.Lambda))
             {
+                Token lambdaToken = previous();
                 string captured = identifier();
                 if (expect(TokenType.Dot))
                 {
                     _knownVariables.Push(captured);
                     Node body = expression();
                     _knownVariables.Pop();
-                    return new Lambda() { Body = body, DebugIdentifier = $"\\{captured}" };
+                    return new Lambda() { Body = body, DebugIdentifier = $"\\{captured}", Range = lambdaToken.Range };
                 }
             }
             return new SyntaxError();

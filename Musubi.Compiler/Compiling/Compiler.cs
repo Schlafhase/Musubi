@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using System.Reflection;
 using System.Text;
 using Musubi.Compiler.Nodes;
@@ -88,7 +89,7 @@ namespace Musubi.Compiler.Compiling
                 _globalCode.AppendLine($"// {def.Key}");
                 // Caching after first evaluation
                 _globalCode.Append($"Lambda *d{id}cached = NULL;");
-                // Actual definition (lambda that returns the body)
+                // Actual definition (function that returns the body)
                 _globalCode.Append($"Lambda *d{id}() {{");
                 _globalCode.Append(definitionContext.CodeBuilder.ToString());
                 _globalCode.Append(
@@ -124,19 +125,24 @@ namespace Musubi.Compiler.Compiling
             string body = compile(l.Body, innerContext);
 
             // define environment for this lambda
+            HashSet<int> captured = [.. usedOuterVariables(l.Body).Where(v => v >= 0)];
             _globalCode.Append("typedef struct {");
-            for (int i = 0; i <= context.VariableCount; i++)
+            foreach (int variable in captured)
             {
-                _globalCode.Append($"Lambda *v{i};");
+                _globalCode.Append($"Lambda *v{variable};");
             }
             _globalCode.Append($"}} e{l.Id};");
 
             // define function
             _globalCode.AppendLine();
             _globalCode.AppendLine($"// {l.DebugIdentifier}");
+            _globalCode.AppendLine($"// defined at {l.Range}");
             _globalCode.Append($"Lambda *l{l.Id}(void *raw_env, Lambda *arg) {{");
             _globalCode.Append($"e{l.Id} *env = raw_env;");
-            _globalCode.Append("env->v0 = arg;");
+            if (captured.Contains(0))
+            {
+                _globalCode.Append("env->v0 = arg;");
+            }
             _globalCode.Append(innerContext.CodeBuilder.ToString());
             _globalCode.Append($"return {body};");
             _globalCode.Append("}");
@@ -145,13 +151,32 @@ namespace Musubi.Compiler.Compiling
             context.CodeBuilder.Append($"Lambda *_l{l.Id} = malloc(sizeof(Lambda));");
             context.CodeBuilder.Append($"_l{l.Id}->fn = &l{l.Id};");
             context.CodeBuilder.Append($"e{l.Id} *_e{l.Id} = malloc(sizeof(e{l.Id}));");
-            for (int i = 0; i < context.VariableCount; i++)
+            foreach (int variable in captured.Where(v => v != 0))
             {
-                context.CodeBuilder.Append($"_e{l.Id}->v{i + 1} = env->v{i};");
+                context.CodeBuilder.Append($"_e{l.Id}->v{variable} = env->v{variable - 1};");
             }
             context.CodeBuilder.Append($"_l{l.Id}->env = _e{l.Id};");
 
             return $"_l{l.Id}";
+        }
+
+        // given an expression, returns a hashset of de bruijn indexed
+        // variables relative to the expression (0 is the lowest outer variable
+        // and below zero is not outer)
+        private HashSet<int> usedOuterVariables(Node n)
+        {
+            return n switch
+            {
+                Variable v => [v.DeBruijn],
+                Application a =>
+                [
+                    .. usedOuterVariables(a.Function),
+                    .. usedOuterVariables(a.Argument),
+                ],
+                Lambda l => [.. usedOuterVariables(l.Body).Select(v => v - 1)],
+                LetIn li => usedOuterVariables(li.Expression),
+                _ => [],
+            };
         }
     }
 }

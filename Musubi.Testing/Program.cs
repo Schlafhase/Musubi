@@ -7,10 +7,7 @@ try
         """
 #include stdlib
 #include stdlib/lazyLists.mbim
-let
-  numbers := grab 5 naturals
-in
-  toString<List<ints>> (numbers)
+toString<ints> 10000
 """,
         "main.mbi",
         true

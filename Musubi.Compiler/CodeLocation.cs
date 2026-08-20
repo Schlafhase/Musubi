@@ -8,5 +8,11 @@ namespace Musubi.Compiler
         }
     }
 
-    public record CodeRange(CodeLocation Location, int Length = 1);
+    public record CodeRange(CodeLocation Location, int Length = 1)
+    {
+        public override string ToString()
+        {
+            return $"{Location}-{Location.Column + Length}";
+        }
+    }
 }
