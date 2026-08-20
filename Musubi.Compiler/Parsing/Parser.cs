@@ -79,13 +79,6 @@ namespace Musubi.Compiler.Parsing
 
             string name = identifier();
             Token idToken = previous();
-            if (name.Length >= 3 && name[0] == '\'' && name[2] == '\'')
-            {
-                errors.TokenWarning(
-                    idToken,
-                    "Identifier looks like a character literal. If this is intentional, consider renaming it because it makes code unreadable."
-                );
-            }
             Definition[] previousDefinitions = [.. _definedAliases.Where(a => a.Name == name)];
             if (previousDefinitions.Length > 0)
             {
@@ -95,6 +88,20 @@ namespace Musubi.Compiler.Parsing
                 );
             }
             expect(TokenType.Definition);
+            if (peek().Type == TokenType.Identifier && (string)peek().Literal! == "rec")
+            {
+                int offset = 1;
+                for (; peek(offset).Type == TokenType.LeftParen; offset++);
+                offset++; // skip the lambda
+                if (peek(offset).Type == TokenType.Identifier)
+                {
+                    string idName = (string)peek(offset).Literal!;
+                    if (idName != name)
+                    {
+                        errors.TokenWarning(peek(offset), $"When using the fix-point combinator ('rec'), a lambda should name its first argument exactly like the definition that defines it to make the recursion clear. This argument should be named {name}");
+                    }
+                }
+            }
             Node value = expression();
             return new Definition()
             {
@@ -131,9 +138,7 @@ namespace Musubi.Compiler.Parsing
                     && _definedAliases.Any(a => a.Name == (string)op.Literal! && a.Infix)
                 )
                 {
-                    Definition def = _definedAliases.First(a =>
-                        a.Name == (string)op.Literal!
-                    );
+                    Definition def = _definedAliases.First(a => a.Name == (string)op.Literal!);
                     if (def.BindingPrecedence < minBindingPrecedence)
                     {
                         break;
@@ -371,9 +376,13 @@ namespace Musubi.Compiler.Parsing
             return tokens[_current - 1];
         }
 
-        private Token peek()
+        private Token peek(int offset=0)
         {
-            return tokens[_current];
+            if (_current + offset >= tokens.Count)
+            {
+                return new Token(TokenType.EOF, "", previous().Line, previous().Column, previous().Filename);
+            }
+            return tokens[_current+offset];
         }
 
         private bool check(params TokenType[] types)

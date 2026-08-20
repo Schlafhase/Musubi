@@ -153,9 +153,9 @@ namespace Musubi.Compiler.Scanning
                                     break;
                             }
                         }
-                        if (advance() == '\'' && _disallowedIdentifierChars.Contains(peek()))
+                        if (advance() == '\'')
                         {
-                            addToken(TokenType.ScottNumber, (int)value);
+                            addToken(TokenType.Number, (int)value);
                         }
                         else
                         {
