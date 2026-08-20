@@ -12,13 +12,19 @@ namespace Musubi.Compiler.Scanning
         // literals
         Identifier,
         Filename,
+        Number,
         ScottNumber,
         ChurchNumber,
+        BinaryNumber,
 
+        // Keywords
         Let,
         In,
+        Infix,
+        Infixl,
+        Infixr,
 
-        IncludeOnce,
+        IncludeOnce, // not really a token (never reaches the parser)
 
         EOF,
     }

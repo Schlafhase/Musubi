@@ -5,9 +5,7 @@ try
 {
     compiled = MusubiCompiler.Compile(
         """
-#define -> .
 #include stdlib
-scottToString (length (take 255 naturals))
 """,
         "main.mbi",
         true

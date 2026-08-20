@@ -23,6 +23,9 @@ namespace Musubi.Compiler.Scanning
         {
             { "let", TokenType.Let },
             { "in", TokenType.In },
+            { "infix", TokenType.Infix },
+            { "infixl", TokenType.Infixl },
+            { "infixr", TokenType.Infixr },
         };
 
         private static readonly HashSet<char> _disallowedIdentifierChars =
@@ -140,7 +143,13 @@ namespace Musubi.Compiler.Scanning
                                     value = '\t';
                                     break;
                                 default:
-                                    errors.Error(@"Unknown escape sequence. To escape a \ use ""\\""", filepath, _line, _column, 2);
+                                    errors.Error(
+                                        @"Unknown escape sequence. To escape a \ use ""\\""",
+                                        filepath,
+                                        _line,
+                                        _column,
+                                        2
+                                    );
                                     break;
                             }
                         }
@@ -153,10 +162,10 @@ namespace Musubi.Compiler.Scanning
                             identifier();
                         }
                     }
-                    else if (c == '\"')
+                    else if (c == '"')
                     {
                         addToken(TokenType.LeftParen);
-                        while (peek() != '\"')
+                        while (peek() is not ('"' or '\n' or '\0'))
                         {
                             _start = _current;
                             char value = advance();
@@ -177,16 +186,37 @@ namespace Musubi.Compiler.Scanning
                                         value = '\t';
                                         break;
                                     default:
-                                        errors.Error(@"Unknown escape sequence. To escape a \ use ""\\""", filepath, _line, _column, 2);
+                                        errors.Error(
+                                            @"Unknown escape sequence. To escape a \ use ""\\""",
+                                            filepath,
+                                            _line,
+                                            _column,
+                                            2
+                                        );
                                         break;
                                 }
                             }
                             addToken(TokenType.ScottNumber, (int)value);
                             addToken(TokenType.Identifier, ":");
+                            addToken(TokenType.Lambda);
+                            addToken(TokenType.Identifier, "_");
+                            addToken(TokenType.Dot);
                         }
-                        advance();
-                        addToken(TokenType.Identifier, "nil");
-                        addToken(TokenType.RightParen);
+                        if (peek() == '"')
+                        {
+                            advance();
+                            addToken(TokenType.Identifier, "nil");
+                            addToken(TokenType.RightParen);
+                        }
+                        else
+                        {
+                            errors.Error(
+                                $"Expected '\"' but got {(peek() == '\n' ? "\\n" : "EOF")}",
+                                filepath,
+                                _line,
+                                _column
+                            );
+                        }
                     }
                     else if (!_disallowedIdentifierChars.Contains(c))
                     {
@@ -224,7 +254,13 @@ namespace Musubi.Compiler.Scanning
                 addToken(TokenType.ScottNumber, value);
                 return;
             }
-            addToken(TokenType.ScottNumber, value);
+            else if (peek() == 'b')
+            {
+                advance();
+                addToken(TokenType.BinaryNumber, value);
+                return;
+            }
+            addToken(TokenType.Number, value);
         }
 
         private string identifierString()
