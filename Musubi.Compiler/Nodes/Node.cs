@@ -5,5 +5,6 @@ namespace Musubi.Compiler.Nodes
         public string Id = Guid.NewGuid().ToString().Replace("-", "");
         public CodeRange? Range;
         public string? DebugIdentifier;
+
     }
 }

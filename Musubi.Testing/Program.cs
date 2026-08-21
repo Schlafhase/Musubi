@@ -6,8 +6,7 @@ try
     compiled = MusubiCompiler.Compile(
         """
 #include stdlib
-#include stdlib/lazyLists.mbim
-toString<ints> 10000
+
 """,
         "main.mbi",
         true

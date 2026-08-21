@@ -91,14 +91,18 @@ namespace Musubi.Compiler.Parsing
             if (peek().Type == TokenType.Identifier && (string)peek().Literal! == "rec")
             {
                 int offset = 1;
-                for (; peek(offset).Type == TokenType.LeftParen; offset++);
+                for (; peek(offset).Type == TokenType.LeftParen; offset++)
+                    ;
                 offset++; // skip the lambda
                 if (peek(offset).Type == TokenType.Identifier)
                 {
                     string idName = (string)peek(offset).Literal!;
                     if (idName != name)
                     {
-                        errors.TokenWarning(peek(offset), $"When using the fix-point combinator ('rec'), a lambda should name its first argument exactly like the definition that defines it to make the recursion clear. This argument should be named {name}");
+                        errors.TokenWarning(
+                            peek(offset),
+                            $"When using the fix-point combinator ('rec'), a lambda should name its first argument exactly like the definition that defines it to make the recursion clear. This argument should be named {name}"
+                        );
                     }
                 }
             }
@@ -181,11 +185,25 @@ namespace Musubi.Compiler.Parsing
                         }
                     }
 
+                    int debruijn = 0;
+                    foreach (string name in _knownVariables)
+                    {
+                        if (name == def.Name)
+                        {
+                            break;
+                        }
+                        debruijn++;
+                    }
+
                     left = new Application()
                     {
                         Function = new Application()
                         {
-                            Function = new DefinitionReference() { Definition = def.Name },
+                            Function = new Variable()
+                            {
+                                ReferencedVariable = def.Name,
+                                DeBruijn = debruijn,
+                            },
                             Argument = left,
                         },
                         Argument = rhs,
@@ -216,14 +234,18 @@ namespace Musubi.Compiler.Parsing
                     {
                         if (name == id)
                         {
-                            return new Variable() { DeBruijn = debruijn };
+                            return new Variable()
+                            {
+                                DeBruijn = debruijn,
+                                ReferencedVariable = name,
+                            };
                         }
                         debruijn++;
                     }
-                    if (_definedAliases.Any(a => a.Name == id))
-                    {
-                        return new DefinitionReference() { Definition = id };
-                    }
+                    // if (_definedAliases.Any(a => a.Name == id))
+                    // {
+                    //     return new DefinitionReference() { Definition = id };
+                    // }
                     errors.TokenError(previous(), $"Undefined identifier '{id}'");
                     return new SyntaxError();
                 case TokenType.LeftParen:
@@ -260,7 +282,13 @@ namespace Musubi.Compiler.Parsing
                     _knownVariables.Push(captured);
                     Node body = expression();
                     _knownVariables.Pop();
-                    return new Lambda() { Body = body, DebugIdentifier = $"\\{captured}", Range = lambdaToken.Range };
+                    return new Lambda()
+                    {
+                        Body = body,
+                        CapturedVariable = captured,
+                        DebugIdentifier = $"\\{captured}",
+                        Range = lambdaToken.Range,
+                    };
                 }
             }
             return new SyntaxError();
@@ -269,8 +297,10 @@ namespace Musubi.Compiler.Parsing
         // letIn: "let" definition* "in" expression
         private Node letIn()
         {
+            // TODO: definitions that do not reference outer variables
+            // can be optimised by creating a global C function for them
+            // instead of creating an extra lambda.
             List<Definition> definitions = [];
-            Dictionary<string, Node> optimisedDefinitions = [];
             if (expect(TokenType.Let))
             {
                 if (match(TokenType.In))
@@ -289,21 +319,9 @@ namespace Musubi.Compiler.Parsing
                     {
                         return new SyntaxError();
                     }
-                    if (def.Name == "+")
-                    {
-                        Console.Write("");
-                    }
-                    if (usesOuterVariables(def.Value))
-                    {
-                        definitions.Add(def);
-                        _knownVariables.Push(def.Name);
-                    }
-                    else
-                    {
-                        // doesn't use outer variables, can be optimised by the compiler
-                        optimisedDefinitions.Add(def.Name, def.Value);
-                        _definedAliases.Push(def);
-                    }
+                    definitions.Add(def);
+                    _knownVariables.Push(def.Name);
+                    _definedAliases.Push(def);
                     if (!match(TokenType.ListSeparator))
                     {
                         break;
@@ -311,33 +329,26 @@ namespace Musubi.Compiler.Parsing
                 }
                 expect("'in' or a comma", TokenType.In);
                 Node body = expression();
-                Node? bodyWrapper = null;
-                foreach (Definition def in definitions)
+                Application? bodyWrapper = null;
+                foreach (Definition def in definitions.Reverse<Definition>())
                 {
                     _knownVariables.Pop();
-                    // a definition let x := y in x should be sugar for
-                    // (\x.x) y
+                    _definedAliases.Pop();
+                    // a definition let x := y, z:=w in x should be sugar for
+                    // (\x.(\z.x) y) w
+                    // TODO: stick to the above pattern instead of the psychosis below
                     bodyWrapper = new Application()
                     {
                         Function = new Lambda()
                         {
                             Body = bodyWrapper ?? body,
+                            CapturedVariable = def.Name,
                             DebugIdentifier = $"Desugared from let in definition for {def.Name}",
                         },
                         Argument = def.Value,
                     };
                 }
-                foreach (var _ in optimisedDefinitions)
-                {
-                    _definedAliases.Pop();
-                }
-                return optimisedDefinitions.Count > 0
-                    ? new LetIn()
-                    {
-                        Definitions = optimisedDefinitions,
-                        Expression = bodyWrapper ?? body,
-                    }
-                    : bodyWrapper ?? body;
+                return bodyWrapper ?? body;
             }
             return new SyntaxError();
         }
@@ -377,13 +388,19 @@ namespace Musubi.Compiler.Parsing
             return tokens[_current - 1];
         }
 
-        private Token peek(int offset=0)
+        private Token peek(int offset = 0)
         {
             if (_current + offset >= tokens.Count)
             {
-                return new Token(TokenType.EOF, "", previous().Line, previous().Column, previous().Filename);
+                return new Token(
+                    TokenType.EOF,
+                    "",
+                    previous().Line,
+                    previous().Column,
+                    previous().Filename
+                );
             }
-            return tokens[_current+offset];
+            return tokens[_current + offset];
         }
 
         private bool check(params TokenType[] types)
