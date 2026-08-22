@@ -255,17 +255,37 @@ namespace Musubi.Compiler.Parsing
                     return inner;
                 case TokenType.Number:
                     advance();
-                    return new Number() { Value = (int)previous().Literal! };
+                    return new Number()
+                    {
+                        Value = (int)previous().Literal!,
+                        Encoding = NumeralEncoding.Scott,
+                    };
+                case TokenType.BinaryNumber:
+                    advance();
+                    return new Number()
+                    {
+                        Value = (int)previous().Literal!,
+                        Encoding = NumeralEncoding.Binary,
+                    };
                 case TokenType.ScottNumber:
                     advance();
-                    return new Number() { Value = (int)previous().Literal! };
+                    return new Number()
+                    {
+                        Value = (int)previous().Literal!,
+                        Encoding = NumeralEncoding.Scott,
+                    };
                 case TokenType.ChurchNumber:
                     advance();
-                    return new Number() { Value = (int)previous().Literal!, ChurchEncoded = true };
+                    return new Number()
+                    {
+                        Value = (int)previous().Literal!,
+                        Encoding = NumeralEncoding.Church,
+                    };
                 case TokenType.Let:
                     return letIn();
                 default:
                     errors.UnexpectedError(peek(), "expression");
+                    advance();
                     return new SyntaxError();
             }
         }
@@ -315,6 +335,20 @@ namespace Musubi.Compiler.Parsing
                         break;
                     }
                     Definition def = definition();
+                    // NOTE: This skips unused definition but this is far from perfect since this
+                    // 1. doesn't respect context
+                    // 2. only cares about the name of the identifier, not what it actually refers to
+                    // 3. still adds the definition if another definition (which can be unused) depends on it
+                    // could definitely be improved in the future but it's better than nothing
+                    if (
+                        !tokens[_current..]
+                            .Any(t =>
+                                t.Type == TokenType.Identifier && (string)t.Literal! == def.Name
+                            )
+                    )
+                    {
+                        goto next;
+                    }
                     if (def.Name is null)
                     {
                         return new SyntaxError();
@@ -322,6 +356,8 @@ namespace Musubi.Compiler.Parsing
                     definitions.Add(def);
                     _knownVariables.Push(def.Name);
                     _definedAliases.Push(def);
+
+                    next:
                     if (!match(TokenType.ListSeparator))
                     {
                         break;
@@ -336,7 +372,6 @@ namespace Musubi.Compiler.Parsing
                     _definedAliases.Pop();
                     // a definition let x := y, z:=w in x should be sugar for
                     // (\x.(\z.x) y) w
-                    // TODO: stick to the above pattern instead of the psychosis below
                     bodyWrapper = new Application()
                     {
                         Function = new Lambda()

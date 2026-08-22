@@ -1,15 +1,33 @@
+using Musubi.Compiler.Compiling;
 using Musubi.Compiler.Nodes;
 using Musubi.Compiler.Parsing;
 using Musubi.Compiler.Scanning;
 
 namespace Musubi.Compiler
 {
+    public enum TargetLanguage
+    {
+        C,
+        LC,
+    }
+
     public static class MusubiCompiler
     {
-        public static string Compile(string source, string filename, bool printAST = false)
+        public static string Compile(
+            string source,
+            string filename,
+            bool printAST = false,
+            TargetLanguage targetLanguage = TargetLanguage.C,
+            List<string>? additionalLibraryDirs = null
+        )
         {
             Errors e = new();
             e.FilenameToSource[filename] = source;
+
+            if (additionalLibraryDirs is not null)
+            {
+                FileLookup.MusubiLibraryDirs.AddRange(additionalLibraryDirs);
+            }
 
             Scanner s = new(source, filename, e);
             List<Token> tokens = s.ScanTokens();
@@ -56,7 +74,12 @@ namespace Musubi.Compiler
                 Console.ForegroundColor = ConsoleColor.Gray;
             }
 
-            Compiling.Compiler c = new(root);
+            ICompiler c = targetLanguage switch
+            {
+                TargetLanguage.C => new Compiling.Compiler(root),
+                TargetLanguage.LC => new CompilerToLC(root),
+                _ => throw new NotImplementedException(),
+            };
             return c.Compile();
         }
 

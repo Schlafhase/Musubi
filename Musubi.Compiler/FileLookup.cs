@@ -2,7 +2,13 @@ namespace Musubi.Compiler
 {
     public static class FileLookup
     {
-        public static readonly List<string> MusubiLibraryDirs = ["/home/Linus/.musubi"];
+        public static readonly List<string> MusubiLibraryDirs =
+        [
+            Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+                ".musubi/"
+            ),
+        ];
 
         public static string GetPath(string path)
         {
@@ -18,7 +24,7 @@ namespace Musubi.Compiler
                 return path;
             }
 
-            foreach (string dir in MusubiLibraryDirs)
+            foreach (string dir in MusubiLibraryDirs.Where(Path.IsPathFullyQualified))
             {
                 string ret = getPath(path, dir);
                 if (File.Exists(ret))

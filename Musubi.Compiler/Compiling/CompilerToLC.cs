@@ -2,35 +2,37 @@ using Musubi.Compiler.Nodes;
 
 namespace Musubi.Compiler.Compiling
 {
-    public class CompilerToLC(Node root)
+    public class CompilerToLC(Node root) : ICompiler
     {
         public string Compile()
         {
-            return compileNode(root, 0, 0);
+            return compileNode(root);
         }
 
-        private string compileNode(Node n, int indentation, int lambdaDepth)
+        private string compileNode(Node n)
         {
             return n switch
             {
-                Application a =>
-                    $"({compileNode(a.Function, indentation, lambdaDepth)} {compileNode(a.Argument, indentation, lambdaDepth)})",
+                Application a => $"({compileNode(a.Function)} {compileNode(a.Argument)})",
                 DefinitionReference r => r.Definition,
-                Document d => compileNode(d.Expression, indentation, lambdaDepth),
-                Lambda l =>
-                    $"\\{l.CapturedVariable}.\n{makeIndentation(indentation) + compileNode(l.Body, indentation + 2, lambdaDepth + 1)}",
+                Document d => compileNode(d.Expression),
+                Lambda l => $"(\\{l.CapturedVariable}.{compileNode(l.Body)})",
                 LetIn li => "("
                     + string.Concat(li.Definitions.Select(d => $"\\{d.Key}."))
-                    + "\n"
-                    + makeIndentation(indentation + 2)
-                    + compileNode(li.Expression, indentation + 2, lambdaDepth)
-                    + "\n"
+                    + compileNode(li.Expression)
                     + ") "
                     + string.Join(
                         ' ',
-                        li.Definitions.Select(d => "(" + compileNode(d.Value, indentation, lambdaDepth) + ")")
+                        li.Definitions.Select(d => "(" + compileNode(d.Value) + ")")
                     ),
-                Number no => no.ChurchEncoded ? churchNumeral(no.Value) : scottNumeral(no.Value),
+                Number no => no.Encoding switch
+                {
+                    NumeralEncoding.Scott => scottNumeral(no.Value),
+                    NumeralEncoding.Church => churchNumeral(no.Value),
+                    _ => throw new NotImplementedException(
+                        $"The '{no.Encoding}' encoding is not implemented"
+                    ),
+                },
                 Variable v => $"{v.ReferencedVariable}",
                 _ => throw new NotImplementedException(),
             };

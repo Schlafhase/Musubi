@@ -13,7 +13,7 @@ namespace Musubi.Compiler.Compiling
         public CompilingContext() { }
     }
 
-    public class Compiler(Node root)
+    public class Compiler(Node root) : ICompiler
     {
         private readonly StringBuilder _globalCode = new();
 
@@ -36,7 +36,7 @@ namespace Musubi.Compiler.Compiling
             document.Append("int main() {");
             document.Append(context.CodeBuilder.ToString());
             document.Append($"Lambda *result = {code};");
-            document.Append("printf(\"printing now\\n\");");
+            // document.Append("printf(\"printing now\\n\");");
             document.Append("printScottString(result);");
             document.Append("}");
             return document.ToString();
@@ -52,9 +52,14 @@ namespace Musubi.Compiler.Compiling
                 Variable v => compileVariable(v, context),
                 Application a => compileApplication(a, context),
                 Lambda l => compileLambda(l, context),
-                Number no => no.ChurchEncoded
-                    ? $"churchNumeral({no.Value})"
-                    : $"scottNumeral({no.Value})",
+                Number no => no.Encoding switch
+                {
+                    NumeralEncoding.Scott => $"scottNumeral({no.Value})",
+                    NumeralEncoding.Church => $"churchNumeral({no.Value})",
+                    _ => throw new NotImplementedException(
+                        $"The '{no.Encoding}' encoding is not implemented"
+                    ),
+                },
                 _ => throw new NotImplementedException(n.GetType().Name),
             };
         }

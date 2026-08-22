@@ -1,0 +1,9 @@
+; Run with `musubi run includingFiles.mbi -i /path/to/this/examples/directory`
+#include stdlib/pipe.mbim
+
+; Including files works like in C. It's equivalent to pasting the included files
+; contents in that location (well, almost. #include tokenises the file first).
+; Complete programs like the helloWorld.mbi program can be included to retrieve
+; their output
+
+#include helloWorld.mbi | reverse | (skip 1) | reverse | (\x -> x @ " and everything else!")

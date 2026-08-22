@@ -1,0 +1,12 @@
+#include stdlib/useScottEncoding.mbim
+#include stdlib/recursion.mbim
+#include stdlib/conversions.mbim
+#include stdlib/pipe.mbim
+
+let
+  fac :=
+    rec (\fac.\n. ; rec is the Z fix-point combinator
+      n 1s (\p.n * (fac p))
+    )
+in
+  (fac 5s) | toString<ints>
