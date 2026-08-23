@@ -2,6 +2,8 @@
 
 ![time spent](https://hackatime.hackclub.com/api/v1/badge/U081Z7D7YJK/Schlafhase/Musubi)
 
+<img width="406" height="177" alt="shapes at 26-08-23 10 41 30" src="https://github.com/user-attachments/assets/5dfe06f2-5a3a-47af-a8fc-8750523ccbcd" />
+
 Musubi is a functional programming language designed to be as close to the
 Lambda Calculus as possible while still being usable.
 
