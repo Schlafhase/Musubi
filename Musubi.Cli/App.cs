@@ -14,14 +14,14 @@ namespace Musubi.Cli
                 TargetLanguage targetLanguage = TargetLanguage.C,
             [Option('o', Description = "Name of the resulting file")]
                 string outputFile = "compiled",
-            [Option('d', Description = "Print additional debug information (like tokens, AST)")]
-                bool printAST = false,
             [Option(
                 'i',
                 Description = "Directories which will be used to find #included files. ~/.musubi is always searched",
                 Split = ' '
             )]
-                List<string>? libraryDirs = null
+                List<string>? libraryDirs = null,
+                [Option('d', Description = "Print additional debug information (like tokens, AST)")]
+                bool printAST = false
         )
         {
             if (!validateLibraryDirs(libraryDirs))
@@ -73,14 +73,18 @@ namespace Musubi.Cli
         public void Run(
             [Operand("file", Description = "Path to the Musubi program")]
                 string filepath = "main.mbi",
-            [Option('d', Description = "Print additional debug information (like tokens, AST)")]
-                bool printAST = false,
             [Option(
                 'i',
                 Description = "Directories which will be used to find #included files. ~/.musubi is always searched",
                 Split = ' '
             )]
-                List<string>? libraryDirs = null
+                List<string>? libraryDirs = null,
+                [Option(
+                    'c',
+                    Description = "The C compiler to use"
+                    )] string cc = "gcc",
+                [Option('d', Description = "Print additional debug information (like tokens, AST)")]
+                bool printAST = false
         )
         {
             if (!validateLibraryDirs(libraryDirs))
@@ -118,13 +122,13 @@ namespace Musubi.Cli
 
             // NOTE: this assumes that the musubi compiler always outputs valid C
             // (which should be expected but since this is a hobby project, might not always be true)
-            ProcessStartInfo gccPsi = new("gcc", $"{resultFile} -o {resultFile}.out")
+            ProcessStartInfo ccPsi = new(cc, $"{resultFile} -o {resultFile}.out")
             {
                 CreateNoWindow = true,
             };
-            using Process gcc = new() { StartInfo = gccPsi };
-            gcc.Start();
-            gcc.WaitForExit();
+            using Process ccProcess = new() { StartInfo = ccPsi };
+            ccProcess.Start();
+            ccProcess.WaitForExit();
 
             ProcessStartInfo programPsu = new(resultFile + ".out") { CreateNoWindow = true };
             using Process p = new() { StartInfo = programPsu };

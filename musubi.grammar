@@ -1,3 +1,4 @@
+// outdated (this grammar was just for initial planning)
 document: macro* expression expressionEndSym?
 module: definition*
 definition: identifier definitionSym expression expressionEndSym

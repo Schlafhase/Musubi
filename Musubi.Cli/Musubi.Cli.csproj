@@ -1,11 +1,26 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <PackAsTool>true</PackAsTool>
+    <ToolCommandName>musubi</ToolCommandName>
+    <PackageOutputPath>./nupkg</PackageOutputPath>
+    <PackageId>Musubi</PackageId>
+    <Authors>Linus Schneeberg</Authors>
+    <Version>0.0.1</Version>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageLicenseExpression>GPL-3.0-or-later</PackageLicenseExpression>
+    <Description>
+      Compiler for Musubi - a small superset of lambda calculus
+    </Description>
+    <PackageProjectUrl>https://github.com/Schlafhase/Musubi</PackageProjectUrl>
   </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="../README.md" Pack="true" PackagePath="/" />
+  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="CommandDotNet" Version="8.1.1" />
@@ -14,5 +29,4 @@
   <ItemGroup>
     <ProjectReference Include="..\Musubi.Compiler\Musubi.Compiler.csproj" />
   </ItemGroup>
-
 </Project>
