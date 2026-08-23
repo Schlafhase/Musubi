@@ -9,7 +9,7 @@
     <PackageOutputPath>./nupkg</PackageOutputPath>
     <PackageId>Musubi</PackageId>
     <Authors>Linus Schneeberg</Authors>
-    <Version>0.0.1</Version>
+    <Version>0.0.2</Version>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageLicenseExpression>GPL-3.0-or-later</PackageLicenseExpression>
     <Description>

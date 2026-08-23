@@ -20,14 +20,11 @@ namespace Musubi.Cli
                 Split = ' '
             )]
                 List<string>? libraryDirs = null,
-                [Option('d', Description = "Print additional debug information (like tokens, AST)")]
+            [Option('d', Description = "Print additional debug information (like tokens, AST)")]
                 bool printAST = false
         )
         {
-            if (!validateLibraryDirs(libraryDirs))
-            {
-                return;
-            }
+            libraryDirs = qualifyLibraryDirs(libraryDirs);
             string source;
             try
             {
@@ -79,18 +76,12 @@ namespace Musubi.Cli
                 Split = ' '
             )]
                 List<string>? libraryDirs = null,
-                [Option(
-                    'c',
-                    Description = "The C compiler to use"
-                    )] string cc = "gcc",
-                [Option('d', Description = "Print additional debug information (like tokens, AST)")]
+            [Option('c', Description = "The C compiler to use")] string cc = "gcc",
+            [Option('d', Description = "Print additional debug information (like tokens, AST)")]
                 bool printAST = false
         )
         {
-            if (!validateLibraryDirs(libraryDirs))
-            {
-                return;
-            }
+            libraryDirs = qualifyLibraryDirs(libraryDirs);
             string source;
             try
             {
@@ -126,51 +117,61 @@ namespace Musubi.Cli
             {
                 CreateNoWindow = true,
             };
-            using Process ccProcess = new() { StartInfo = ccPsi };
-            ccProcess.Start();
-            ccProcess.WaitForExit();
 
-            ProcessStartInfo programPsu = new(resultFile + ".out") { CreateNoWindow = true };
-            using Process p = new() { StartInfo = programPsu };
-            p.Start();
-            p.WaitForExit();
-
-            if (p.ExitCode != 0)
+            try
             {
-                Console.WriteLine(
-                    "The process crashed. This is most likely because the output of the program wasn't in the correct format (scott list of integers representing a string). This can also be caused by a stack overflow."
-                );
+                using Process ccProcess = new() { StartInfo = ccPsi };
+                ccProcess.Start();
+                ccProcess.WaitForExit();
+
+                ProcessStartInfo programPsu = new(resultFile + ".out") { CreateNoWindow = true };
+                using Process p = new() { StartInfo = programPsu };
+                p.Start();
+                p.WaitForExit();
+
+                if (p.ExitCode != 0)
+                {
+                    Console.WriteLine(
+                        "The process crashed. This is most likely because the output of the program wasn't in the correct format (scott list of integers representing a string). This can also be caused by a stack overflow."
+                    );
+                }
             }
-            File.Delete(resultFile);
-            File.Delete(resultFile + ".out");
+            finally
+            {
+                File.Delete(resultFile);
+                File.Delete(resultFile + ".out");
+            }
         }
 
-        private bool validateLibraryDirs(List<string>? dirs)
+        private List<string> qualifyLibraryDirs(List<string>? dirs)
         {
             if (dirs is null)
             {
-                return true;
+                return [];
             }
-            List<string> badDirs = [];
+            List<string> absoluteDirs = [];
             foreach (string dir in dirs)
             {
                 if (!Path.IsPathFullyQualified(dir))
                 {
-                    badDirs.Add(dir);
+                    absoluteDirs.Add(Path.GetFullPath(dir));
+                }
+                else
+                {
+                    absoluteDirs.Add(dir);
                 }
             }
-            if (badDirs.Count == 0)
-            {
-                return true;
-            }
-            Console.WriteLine(
-                "Library directories have to be fully qualified paths (absolute paths). The following library directories are not fully qualified:"
-            );
+            List<string> badDirs = [.. absoluteDirs.Where(d => !Directory.Exists(d))];
             foreach (string dir in badDirs)
             {
-                Console.WriteLine(" " + dir);
+                Console.WriteLine($"Hint: Specified library directory does not exist: {dir}");
             }
-            return false;
+
+            if (badDirs.Count > 0)
+            {
+                Console.WriteLine();
+            }
+            return absoluteDirs;
         }
     }
 }
