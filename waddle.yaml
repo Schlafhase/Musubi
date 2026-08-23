@@ -1,0 +1,11 @@
+Server: 
+ClientOutputFileName: 
+LogFileName: 
+LogLevel: Information
+FinishedIcon: "\U000F05E0 [italic dim]Success[/]"
+WaitingIcon: "\U000F051A [italic dim]Working[/]"
+ErrorIcon: "\U000F0159 [italic dim]Error[/]"
+IgnoredIcon:  [italic dim]Ignored Error[/]
+NotActiveIcon: ' '
+DefaultWorkflow: publish
+VerboseErrors: false

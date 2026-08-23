@@ -6,7 +6,7 @@ try
     compiled = MusubiCompiler.Compile(
         """
 #include stdlib
-'H' : 'e' + 'e' : 'l' : 'o' : nil
+take 5 "Hello World!"
 """,
         "main.mbi",
         true

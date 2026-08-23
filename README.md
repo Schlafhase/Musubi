@@ -5,11 +5,42 @@
 Musubi is a functional programming language designed to be as close to the
 Lambda Calculus as possible while still being usable.
 
+## Table of contents
+
+- [The compiler](#the-compiler)
+  - [Installation](#installation)
+    - [Using dotnet tools](#using-dotnet-tools)
+    - [Manual installation](#manual-installation)
+    - [Installation of the standard library](#installation-of-the-standard-library)
+  - [Usage](#usage)
+    - [Compile](#compile)
+    - [Run](#run)
+- [Introduction](#introduction)
+  - [Lambda Calculus basics](#lambda-calculus-basics)
+  - [Computation in the Lambda Calculus](#computation-in-the-lambda-calculus)
+- [Output](#output)
+- [Musubi's Syntax](#musubis-syntax)
+  - [Identifiers](#identifiers)
+  - [Features](#features)
+    - [Let-in expression](#let-in-expression)
+    - [Comments](#comments)
+    - [Infix operators](#infix-operators)
+    - [Including files](#including-files)
+    - [The #once directive](#the-once-directive)
+    - [Literals](#literals)
+      - [Numerals](#numerals)
+      - [Characters](#characters)
+      - [Strings](#strings)
+    - [The #define directive](#the-define-directive)
+- [Writing Modules](#writing-modules)
+- [The rest](#the-rest)
+
 ## The compiler
 
 ### Installation
 
 <!--Yes, this section is mostly copied from Waddle :D-->
+
 #### Using dotnet tools
 
 If you have the .NET SDK installed, you can install Waddle with this simple
@@ -119,7 +150,7 @@ function that takes a `b` and returns `5 + b`.
 
 ### Computation in the Lambda Calculus
 
-So how can we achieve computation with just functions? It actually has been
+So how can we achieve computation with just functions? It has actually been
 proven that
 [Turing computability and so called λ-computability are equivalent ](https://en.wikipedia.org/wiki/Church%E2%80%93Turing_thesis).
 The key to programming in LC is using encodings for datatypes (and recursion
@@ -133,7 +164,7 @@ false := λa.λb.b
 ```
 
 True is a function that takes two parameters and returns the first one while
-false takes two parameters and returns the second one. Now we can do simple if
+false takes two parameters and returns the second one. Now we can do simple
 branching:
 
 ```
@@ -146,6 +177,13 @@ datatypes. Since these encodings aren't core features of Musubi or LC, I won't
 go more in-depth on them here but check out the
 [Musubi standard library](https://github.com/Schlafhase/MusubiStdlib) for more
 details on datatype encodings and other utilities that allow programming.
+
+## Output
+
+The compiled C program expects a Musubi program to evaluate to a string (encoded
+as a scott list of scott numerals). That string will be printed but if the
+program evaluates to something unexpected (or a string that's too long) it will
+likely crash with a segmentation fault.
 
 ## Musubi's Syntax
 
@@ -278,13 +316,16 @@ also means that **the order of includes can matter**.
 the compiler will look in ~/.musubi for that file but additional directories can
 be specified (see [usage of the compiler](#usage)).
 
+`{file}` may also be a directory in which case `{file}/module.mbim` will be
+included.
+
 Circular includes are not allowed.
 
 ##### Example
 
 ```
 ; Assuming the stdlib is installed in ~/.musubi
-#include stdlib
+#include stdlib ; stdlib is a directory so this includes stdlib/module.mbim
 "Hello World!"
 ```
 

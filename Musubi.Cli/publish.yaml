@@ -1,0 +1,12 @@
+- name: Publish Linux
+  cmd: dotnet publish -r linux-x64 -p:PublishSingleFile=true --self-contained "true"
+
+- name: Publish Windows
+  cmd: dotnet publish -r win-x64 -p:PublishSingleFile=true --self-contained "true"
+
+- name: Pack dotnet tool
+  cmd: dotnet pack
+
+- name: Move binaries
+  cmd: mv bin/Release/net10.0/linux-x64/publish/Musubi.Cli ./bin/Release/musubi 
+       && mv bin/Release/net10.0/win-x64/publish/Musubi.Cli.exe ./bin/Release/musubi.exe
