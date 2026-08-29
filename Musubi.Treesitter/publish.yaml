@@ -1,0 +1,2 @@
+- name: Generate parser
+  cmd: tree-sitter generate

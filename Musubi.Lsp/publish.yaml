@@ -1,0 +1,2 @@
+- name: Publish LSP server
+  cmd: dotnet publish -c Release

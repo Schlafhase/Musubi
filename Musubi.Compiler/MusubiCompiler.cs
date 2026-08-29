@@ -30,11 +30,11 @@ namespace Musubi.Compiler
             }
 
             Scanner s = new(source, filename, e);
-            List<Token> tokens = s.ScanTokens();
+            ScannerResult scannerResult = s.ScanTokensFullInfo();
 
             if (printAST)
             {
-                foreach (Token t in tokens)
+                foreach (Token t in scannerResult.FullTokens)
                 {
                     Console.WriteLine(
                         t.Type
@@ -50,7 +50,7 @@ namespace Musubi.Compiler
                 }
             }
 
-            Parser p = new(tokens, e);
+            Parser p = new(scannerResult.ParsableTokens, e);
             Node root = p.Parse();
 
             if (printAST)

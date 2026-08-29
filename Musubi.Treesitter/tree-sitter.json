@@ -1,0 +1,41 @@
+{
+  "$schema": "https://tree-sitter.github.io/tree-sitter/assets/schemas/config.schema.json",
+  "grammars": [
+    {
+      "name": "musubi",
+      "camelcase": "Musubi",
+      "title": "Musubi",
+      "scope": "source.musubi",
+      "file-types": [
+        ".mbi",
+        ".mbim"
+      ],
+      "injection-regex": "^musubi$",
+      "class-name": "TreeSitterMusubi"
+    }
+  ],
+  "metadata": {
+    "version": "0.1.1",
+    "license": "GPL",
+    "description": "Parser for Musubi, a small functional programming language",
+    "authors": [
+      {
+        "name": "Linus Schneeberg",
+        "email": "linus.schneeberg@schlafhase.uk",
+        "url": "https://schlafhase.uk/"
+      }
+    ],
+    "links": {
+      "repository": "https://github.com/Schlafhase/Musubi"
+    }
+  },
+  "bindings": {
+    "c": true,
+    "go": true,
+    "node": true,
+    "python": true,
+    "rust": true,
+    "swift": true,
+    "zig": false
+  }
+}

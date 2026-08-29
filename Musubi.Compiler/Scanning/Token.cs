@@ -15,4 +15,5 @@ namespace Musubi.Compiler.Scanning
             return Type + " " + Lexeme + " at line " + Line + " column " + Column;
         }
     }
+
 }

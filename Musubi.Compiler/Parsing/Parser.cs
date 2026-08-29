@@ -48,7 +48,7 @@ namespace Musubi.Compiler.Parsing
         }
 
         // definition: identifier definitionSym expression expressionEndSym
-        private Definition definition()
+        private Definition? definition()
         {
             int bindingPrecedence = int.MaxValue;
             bool infix = false;
@@ -67,8 +67,9 @@ namespace Musubi.Compiler.Parsing
             }
             if (
                 match(TokenType.Infix, TokenType.Infixl, TokenType.Infixr)
-                && expect(
+                && expectAndSkipToSafeToken(
                     "a number defining the binding precedence of this operator",
+                    [TokenType.ListSeparator, TokenType.In],
                     TokenType.Number
                 )
             )
@@ -77,7 +78,11 @@ namespace Musubi.Compiler.Parsing
                 bindingPrecedence = (int)previous().Literal!;
             }
 
-            string name = identifier();
+            string? name = identifier([
+                TokenType.Definition,
+                TokenType.In,
+                TokenType.ListSeparator,
+            ]);
             Token idToken = previous();
             Definition[] previousDefinitions = [.. _definedAliases.Where(a => a.Name == name)];
             if (previousDefinitions.Length > 0)
@@ -87,7 +92,17 @@ namespace Musubi.Compiler.Parsing
                     $"Redefinition of '{name}' hides the previous definition of '{name}' at {previousDefinitions[0].DefinedAt.Location}"
                 );
             }
-            expect(TokenType.Definition);
+
+            if (name is not null)
+            {
+                expect("':='", TokenType.Definition);
+            }
+            else
+            {
+                // if identifier failed to parse don't emit error for missing :=
+                match(TokenType.Definition);
+            }
+
             if (peek().Type == TokenType.Identifier && (string)peek().Literal! == "rec")
             {
                 int offset = 1;
@@ -226,7 +241,7 @@ namespace Musubi.Compiler.Parsing
                 case TokenType.Lambda:
                     return lambda();
                 case TokenType.Identifier:
-                    string id = identifier();
+                    string id = identifier()!;
                     // find 0-based De Bruijn index
 
                     int debruijn = 0;
@@ -334,7 +349,12 @@ namespace Musubi.Compiler.Parsing
                     {
                         break;
                     }
-                    Definition def = definition();
+                    Definition? def = definition();
+                    if (def is null)
+                    {
+                        continue;
+                    }
+                    Definition defNotNull = def.Value;
                     // NOTE: This skips unused definition but this is far from perfect since this
                     // 1. doesn't respect context
                     // 2. only cares about the name of the identifier, not what it actually refers to
@@ -343,19 +363,20 @@ namespace Musubi.Compiler.Parsing
                     if (
                         !tokens[_current..]
                             .Any(t =>
-                                t.Type == TokenType.Identifier && (string)t.Literal! == def.Name
+                                t.Type == TokenType.Identifier
+                                && (string)t.Literal! == defNotNull.Name
                             )
                     )
                     {
                         goto next;
                     }
-                    if (def.Name is null)
+                    if (defNotNull.Name is null)
                     {
                         return new SyntaxError();
                     }
-                    definitions.Add(def);
-                    _knownVariables.Push(def.Name);
-                    _definedAliases.Push(def);
+                    definitions.Add(defNotNull);
+                    _knownVariables.Push(defNotNull.Name);
+                    _definedAliases.Push(defNotNull);
 
                     next:
                     if (!match(TokenType.ListSeparator))
@@ -405,10 +426,13 @@ namespace Musubi.Compiler.Parsing
             };
         }
 
-        private string identifier()
+        private string? identifier(ICollection<TokenType>? nextSafe = null)
         {
-            expect(TokenType.Identifier);
-            return (previous().Literal as string)!;
+            if (expectAndSkipToSafeToken("identifier", nextSafe, TokenType.Identifier))
+            {
+                return previous().Literal as string;
+            }
+            return null;
         }
 
         // helpers
@@ -487,12 +511,29 @@ namespace Musubi.Compiler.Parsing
 
         private bool expect(string expected, params TokenType[] types)
         {
+            return expectAndSkipToSafeToken(expected, null, types);
+        }
+
+        private bool expectAndSkipToSafeToken(
+            string expected,
+            ICollection<TokenType>? nextSafe = null,
+            params TokenType[] types
+        )
+        {
             if (match(types))
             {
                 return true;
             }
             Token next = peek();
             errors.UnexpectedError(next, expected);
+            if (nextSafe is not null)
+            {
+                while (!nextSafe.Contains(peek().Type) && !endReached())
+                {
+                    advance();
+                }
+            }
+            advance();
             return false;
         }
 

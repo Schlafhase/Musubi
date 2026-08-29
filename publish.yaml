@@ -1,2 +1,6 @@
+- name: Publish Musubi.Treesitter
+  workflow: "Musubi.Treesitter/publish"
+- name: Publish Musubi.Lsp
+  workflow: "Musubi.Lsp/publish"
 - name: Publish Musubi.Cli
   workflow: "Musubi.Cli/publish"

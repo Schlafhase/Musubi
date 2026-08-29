@@ -1,5 +1,14 @@
 namespace Musubi.Compiler.Scanning
 {
+    public readonly struct ScannerResult
+    {
+        public readonly List<Token> ParsableTokens = [];
+        public readonly List<Token> FullTokens = [];
+        public readonly Dictionary<string, List<Token>> Macros = [];
+
+        public ScannerResult() { }
+    }
+
     public class Scanner(
         string source,
         string filepath,
@@ -49,6 +58,28 @@ namespace Musubi.Compiler.Scanning
         private readonly HashSet<string> _includeOnceAlreadyIncluded =
             includeOnceAlreadyIncluded ?? [];
 
+        public ScannerResult ScanTokensFullInfo()
+        {
+            ScanTokensInIncludedFile();
+            _tokens.Add(new(TokenType.EOF, "", _line, _column + 1, filepath));
+            ScannerResult r = new();
+            r.FullTokens.AddRange(_tokens);
+            r.ParsableTokens.AddRange(
+                from token in _tokens
+                where
+                    !new TokenType[] { TokenType.Comment, TokenType.IncludeOnce }.Contains(
+                        token.Type
+                    )
+                select token
+            );
+            foreach (var macro in _macros)
+            {
+                r.Macros[macro.Key] = macro.Value;
+            }
+
+            return r;
+        }
+
         public List<Token> ScanTokens()
         {
             ScanTokensInIncludedFile();
@@ -96,6 +127,7 @@ namespace Musubi.Compiler.Scanning
                     {
                         advance();
                     }
+                    addToken(TokenType.Comment, currentLexeme()[1..]);
                     break;
                 case ':':
                     if (peek() == '=')
@@ -176,8 +208,8 @@ namespace Musubi.Compiler.Scanning
                                     case '\\':
                                         value = '\\';
                                         break;
-                                    case '\'':
-                                        value = '\'';
+                                    case '"':
+                                        value = '"';
                                         break;
                                     case 'n':
                                         value = '\n';

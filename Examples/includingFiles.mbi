@@ -9,4 +9,6 @@
 ; Complete programs like the helloWorld.mbi program can be included to retrieve
 ; their output
 
-(#include helloWorld.mbi) | reverse | skip 1 | reverse | (\x -> x @ " and everything else!")
+(
+  #include helloWorld.mbi
+) | reverse | skip 1 | reverse | (\x -> x @ " and everything else!")

@@ -1,5 +1,6 @@
 <Solution>
   <Project Path="Musubi.Cli/Musubi.Cli.csproj" />
   <Project Path="Musubi.Compiler/Musubi.Compiler.csproj" />
+  <Project Path="Musubi.Lsp/Musubi.Lsp.csproj" />
   <Project Path="Musubi.Testing/Musubi.Testing.csproj" />
 </Solution>
