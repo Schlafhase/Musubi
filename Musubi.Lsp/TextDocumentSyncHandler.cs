@@ -7,7 +7,6 @@ using OmniSharp.Extensions.LanguageServer.Protocol.Document;
 using OmniSharp.Extensions.LanguageServer.Protocol.Models;
 using OmniSharp.Extensions.LanguageServer.Protocol.Server;
 using OmniSharp.Extensions.LanguageServer.Protocol.Server.Capabilities;
-using OmniSharp.Extensions.LanguageServer.Protocol.Window;
 using DiagnosticSeverity = OmniSharp.Extensions.LanguageServer.Protocol.Models.DiagnosticSeverity;
 
 namespace Musubi.Lsp
@@ -16,6 +15,7 @@ namespace Musubi.Lsp
     {
         private readonly ILanguageServerFacade _router;
         private readonly StateManager _stateManager;
+        private readonly List<DocumentUri> _previousDiagnosticDocuments = [];
 
         private readonly TextDocumentSelector _documentSelector = TextDocumentSelector.ForLanguage(
             "musubi"
@@ -82,48 +82,34 @@ namespace Musubi.Lsp
         private void validate(DocumentUri uri, string text)
         {
             _stateManager.UpdateBuffer(uri.ToString(), new StringBuffer(text));
-            var diagnostics = new List<Diagnostic>();
+            var diagnostics = new Dictionary<DocumentUri, List<Diagnostic>>();
 
-            foreach (ErrorsReportable error in _stateManager.GetErrors())
+            foreach (ErrorsReportable error in _stateManager.GetErrors(uri.ToString()))
             {
                 Diagnostic d;
+                DocumentUri dUri = uri;
                 if (error is ErrorsReportableWithLocation el)
                 {
                     if (el.Filename != uri.ToString())
                     {
-                        d = new()
-                        {
-                            Message = $"Error in module {el.Filename}: " + error.Message,
-                            Range = new(new Position(0, 0), new Position(0, 0)),
-                            Severity = error.Severity switch
-                            {
-                                Severity.Hint => DiagnosticSeverity.Hint,
-                                Severity.Warning => DiagnosticSeverity.Warning,
-                                Severity.Error => DiagnosticSeverity.Error,
-                                _ => throw new NotImplementedException(),
-                            },
-                            Source = "musubi",
-                        };
+                        dUri = DocumentUri.FromFileSystemPath(el.Filename);
                     }
-                    else
+                    d = new()
                     {
-                        d = new()
+                        Message = error.Message,
+                        Range = new(
+                            new Position(el.Line - 1, el.Column - 1),
+                            new Position(el.Line - 1, el.Column + el.Length - 1)
+                        ),
+                        Severity = error.Severity switch
                         {
-                            Message = error.Message,
-                            Range = new(
-                                new Position(el.Line - 1, el.Column - 1),
-                                new Position(el.Line - 1, el.Column + el.Length - 1)
-                            ),
-                            Severity = error.Severity switch
-                            {
-                                Severity.Hint => DiagnosticSeverity.Hint,
-                                Severity.Warning => DiagnosticSeverity.Warning,
-                                Severity.Error => DiagnosticSeverity.Error,
-                                _ => throw new NotImplementedException(),
-                            },
-                            Source = "musubi",
-                        };
-                    }
+                            Severity.Hint => DiagnosticSeverity.Hint,
+                            Severity.Warning => DiagnosticSeverity.Warning,
+                            Severity.Error => DiagnosticSeverity.Error,
+                            _ => throw new NotImplementedException(),
+                        },
+                        Source = "musubi",
+                    };
                 }
                 else
                 {
@@ -140,16 +126,39 @@ namespace Musubi.Lsp
                         Source = "musubi",
                     };
                 }
-                diagnostics.Add(d);
+                if (diagnostics.TryGetValue(dUri, out List<Diagnostic>? entry))
+                {
+                    entry.Add(d);
+                }
+                else
+                {
+                    diagnostics[dUri] = [d];
+                }
             }
 
-            _router.TextDocument.PublishDiagnostics(
-                new PublishDiagnosticsParams
-                {
-                    Uri = uri,
-                    Diagnostics = new Container<Diagnostic>(diagnostics),
-                }
-            );
+            foreach (
+                DocumentUri u in _previousDiagnosticDocuments.Where(u =>
+                    !diagnostics.ContainsKey(u)
+                )
+            )
+            {
+                // clear diagnostics
+                _router.TextDocument.PublishDiagnostics(
+                    new PublishDiagnosticsParams { Uri = u, Diagnostics = [] }
+                );
+            }
+            _previousDiagnosticDocuments.Clear();
+            foreach (KeyValuePair<DocumentUri, List<Diagnostic>> kvp in diagnostics)
+            {
+                _previousDiagnosticDocuments.Add(kvp.Key);
+                _router.TextDocument.PublishDiagnostics(
+                    new PublishDiagnosticsParams
+                    {
+                        Uri = kvp.Key,
+                        Diagnostics = new Container<Diagnostic>(kvp.Value),
+                    }
+                );
+            }
         }
     }
 }

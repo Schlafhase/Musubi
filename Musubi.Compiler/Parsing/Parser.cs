@@ -439,7 +439,10 @@ namespace Musubi.Compiler.Parsing
 
         private void advance()
         {
-            _current++;
+            if (!endReached())
+            {
+                _current++;
+            }
         }
 
         private Token previous()

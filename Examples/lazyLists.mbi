@@ -1,0 +1,21 @@
+#include stdlib
+#include stdlib/lazyLists.mbim ; optional module in stdlib (not included by default)
+
+
+let
+  ; Lazy lists allow you to define infinite sequences.
+  fibonacciNumbers :=
+    let fibonacciNumbers' :=
+      rec (\fibonacciNumbers'.\a -> \b ->
+        let
+          element := a + b
+        in
+          ; Use `lazy` to delay evaluation of the tail (otherwise it would get stuck in an infinite loop)
+          element : lazy fibonacciNumbers' b element
+      )
+    in
+      fibonacciNumbers' 0 1,
+in
+  ; `grab` is defined in stdlib/lazyLists.mbim it takes n elements
+  ; from a lazy list and returns them as a strict list
+  grab 15 fibonacciNumbers | toString<List<ints>>

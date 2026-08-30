@@ -500,7 +500,7 @@ namespace Musubi.Compiler.Scanning
 
         private char peek(int offset = 0)
         {
-            if (_current + offset >= _source.Length)
+            if (_current + offset + 1 >= _source.Length)
             {
                 return '\0';
             }

@@ -163,6 +163,29 @@
     }
   },
   {
+    "type": "stringLiteral",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": true,
+      "required": false,
+      "types": [
+        {
+          "type": "escapeSequence",
+          "named": true
+        },
+        {
+          "type": "stringSegment",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "\"",
+    "named": false
+  },
+  {
     "type": "#define",
     "named": false
   },
@@ -208,6 +231,10 @@
     "extra": true
   },
   {
+    "type": "escapeSequence",
+    "named": true
+  },
+  {
     "type": "identifier",
     "named": true
   },
@@ -245,7 +272,7 @@
     "extra": true
   },
   {
-    "type": "stringLiteral",
+    "type": "stringSegment",
     "named": true
   },
   {

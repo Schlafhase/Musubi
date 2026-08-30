@@ -229,8 +229,41 @@
       ]
     },
     "stringLiteral": {
+      "type": "SEQ",
+      "members": [
+        {
+          "type": "STRING",
+          "value": "\""
+        },
+        {
+          "type": "REPEAT",
+          "content": {
+            "type": "CHOICE",
+            "members": [
+              {
+                "type": "SYMBOL",
+                "name": "escapeSequence"
+              },
+              {
+                "type": "SYMBOL",
+                "name": "stringSegment"
+              }
+            ]
+          }
+        },
+        {
+          "type": "STRING",
+          "value": "\""
+        }
+      ]
+    },
+    "escapeSequence": {
       "type": "PATTERN",
-      "value": "\"(\\\\.|[^\"\\\\\\n])*\""
+      "value": "\\\\."
+    },
+    "stringSegment": {
+      "type": "PATTERN",
+      "value": "[^\"\\\\\\n]+"
     },
     "charLiteral": {
       "type": "PATTERN",

@@ -1,0 +1,2 @@
+- name: Regenerate parser
+  workflow: Musubi.Treesitter/publish

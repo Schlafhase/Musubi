@@ -41,7 +41,10 @@ module.exports = grammar({
 
     infixKeyword: (_) => choice("infix", "infixl", "infixr"),
 
-    stringLiteral: (_) => /"(\\.|[^"\\\n])*"/,
+    stringLiteral: ($) =>
+      seq('"', repeat(choice($.escapeSequence, $.stringSegment)), '"'),
+    escapeSequence: (_) => /\\./,
+    stringSegment: (_) => /[^"\\\n]+/,
     charLiteral: (_) => /'(\\[\\nt']|.)'/,
     numberLiteral: (_) => /\d+[csb]?/,
     identifier: (_) => /[^\sλ\(\)\.\\;,'"0-9][^\sλ\(\)\.\\;,]*/,

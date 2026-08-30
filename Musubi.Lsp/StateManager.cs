@@ -10,10 +10,16 @@ namespace Musubi.Lsp
     public class StateManager
     {
         private readonly ConcurrentDictionary<string, Buffer> _buffers = new();
+        private readonly ConcurrentDictionary<string, CompilationData> _data = new();
 
-        private Node? _ast;
-        private List<Token>? _tokens;
-        private Errors? _errors;
+        private struct CompilationData
+        {
+            public Node? AST;
+            public List<Token>? Tokens;
+            public Errors Errors = new();
+
+            public CompilationData() { }
+        }
 
         public void UpdateBuffer(string documentPath, Buffer buffer)
         {
@@ -36,36 +42,37 @@ namespace Musubi.Lsp
         {
             Buffer buffer = _buffers[documentPath];
 
-            _errors = new();
-            _errors.FilenameToSource.Add(documentPath, buffer.GetText(0, buffer.Length));
-            Scanner s = new(buffer.GetText(0, buffer.Length), documentPath, _errors);
+            CompilationData data = new();
+            data.Errors.FilenameToSource.Add(documentPath, buffer.GetText(0, buffer.Length));
+            Scanner s = new(buffer.GetText(0, buffer.Length), documentPath, data.Errors);
             ScannerResult result = s.ScanTokensFullInfo();
-            _tokens = result.FullTokens;
-            Parser p = new(result.ParsableTokens, _errors);
-            _ast = p.Parse();
+            data.Tokens = result.FullTokens;
+            Parser p = new(result.ParsableTokens, data.Errors);
+            data.AST = p.Parse();
             if (
                 documentPath.EndsWith(".mbim")
-                && _errors.Items.Count > 0
-                && _errors.Items[^1].Message == "Expected expression but got EOF instead"
+                && data.Errors.Items.Count > 0
+                && data.Errors.Items[^1].Message == "Expected expression but got EOF instead"
             )
             {
-                _errors.Items.RemoveAt(_errors.Items.Count - 1);
+                data.Errors.Items.RemoveAt(data.Errors.Items.Count - 1);
             }
+            _data[documentPath] = data;
         }
 
-        public List<ErrorsReportable> GetErrors()
+        public List<ErrorsReportable> GetErrors(string documentPath)
         {
-            return _errors?.Items ?? [];
+            return _data[documentPath].Errors?.Items ?? [];
         }
 
-        public Node? GetAST()
+        public Node? GetAST(string documentPath)
         {
-            return _ast;
+            return _data[documentPath].AST;
         }
 
-        public List<Token>? GetTokens()
+        public List<Token>? GetTokens(string documentPath)
         {
-            return _tokens;
+            return _data[documentPath].Tokens;
         }
     }
 }

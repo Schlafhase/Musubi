@@ -14,12 +14,13 @@
 
 ; comments
 (comment) @comment
-(macro) @comment
-(once) @comment
-(include) @comment
+; (macro) @comment
+; (once) @comment
+; (include) @comment
 
 ; strings
 (stringLiteral) @string
+(escapeSequence) @string.escape
 
 ; delimiters
 "," @punctuation.delimiter
@@ -31,4 +32,10 @@
 ] @punctuation.bracket
 
 (identifier) @variable
+
+; numbers
+[
+  (numberLiteral)
+  (nonEncodedNumberLiteral)
+] @number
 
