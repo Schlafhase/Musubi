@@ -17,8 +17,6 @@ namespace Musubi.Compiler.Scanning
         ChurchNumber,
         BinaryNumber,
 
-        Comment,
-
         // Keywords
         Let,
         In,

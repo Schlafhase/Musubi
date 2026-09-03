@@ -15,8 +15,10 @@ namespace Musubi.Compiler.Parsing
         private struct Definition
         {
             public string Name;
+            public string? DocString;
             public Node Value;
             public CodeRange DefinedAt;
+            public Token IdToken;
             public bool Infix;
             public int BindingPrecedence;
             public Associativity Associativity;
@@ -43,13 +45,16 @@ namespace Musubi.Compiler.Parsing
         // document: expression expressionEndSym?
         private Document document()
         {
+            CodeLocation start = peek().Range.A;
             Node toplevel = expression();
-            return new() { Expression = toplevel };
+            CodeLocation end = previous().Range.B;
+            return new() { Expression = toplevel, Range = new(start, end) };
         }
 
         // definition: identifier definitionSym expression expressionEndSym
         private Definition? definition()
         {
+            string? docString = peek().DocString;
             int bindingPrecedence = int.MaxValue;
             bool infix = false;
             Associativity associativity = Associativity.Left;
@@ -89,7 +94,7 @@ namespace Musubi.Compiler.Parsing
             {
                 errors.TokenHint(
                     previous(),
-                    $"Redefinition of '{name}' hides the previous definition of '{name}' at {previousDefinitions[0].DefinedAt.Location}"
+                    $"Redefinition of '{name}' hides the previous definition of '{name}' at {previousDefinitions[0].DefinedAt.A}"
                 );
             }
 
@@ -124,8 +129,10 @@ namespace Musubi.Compiler.Parsing
             Node value = expression();
             return new Definition()
             {
-                Name = name,
+                Name = name ?? "",
+                DocString = docString,
                 DefinedAt = idToken.Range,
+                IdToken = idToken,
                 Value = value,
                 Infix = infix,
                 BindingPrecedence = bindingPrecedence,
@@ -195,7 +202,10 @@ namespace Musubi.Compiler.Parsing
                                     peek(),
                                     "Chaining non-associative oparators is not allowed. Please use parentheses in this case"
                                 );
-                                return new SyntaxError();
+                                return new SyntaxError()
+                                {
+                                    Range = new(left.Range.A, previous().Range.B),
+                                };
                             }
                         }
                     }
@@ -212,12 +222,15 @@ namespace Musubi.Compiler.Parsing
 
                     left = new Application()
                     {
+                        Range = new(left.Range.A, rhs.Range.B),
                         Function = new Application()
                         {
+                            Range = new(left.Range.A, op.Range.B),
                             Function = new Variable()
                             {
                                 ReferencedVariable = def.Name,
                                 DeBruijn = debruijn,
+                                Range = op.Range,
                             },
                             Argument = left,
                         },
@@ -227,7 +240,12 @@ namespace Musubi.Compiler.Parsing
                 }
 
                 Node right = atom();
-                left = new Application() { Function = left, Argument = right };
+                left = new Application()
+                {
+                    Function = left,
+                    Argument = right,
+                    Range = new(left.Range.A, right.Range.B),
+                };
             }
 
             return left;
@@ -251,6 +269,7 @@ namespace Musubi.Compiler.Parsing
                         {
                             return new Variable()
                             {
+                                Range = previous().Range,
                                 DeBruijn = debruijn,
                                 ReferencedVariable = name,
                             };
@@ -262,7 +281,7 @@ namespace Musubi.Compiler.Parsing
                     //     return new DefinitionReference() { Definition = id };
                     // }
                     errors.TokenError(previous(), $"Undefined identifier '{id}'");
-                    return new SyntaxError();
+                    return new SyntaxError() { Range = previous().Range };
                 case TokenType.LeftParen:
                     advance();
                     Node inner = expression();
@@ -272,6 +291,7 @@ namespace Musubi.Compiler.Parsing
                     advance();
                     return new Number()
                     {
+                        Range = previous().Range,
                         Value = (int)previous().Literal!,
                         Encoding = NumeralEncoding.Scott,
                     };
@@ -279,6 +299,7 @@ namespace Musubi.Compiler.Parsing
                     advance();
                     return new Number()
                     {
+                        Range = previous().Range,
                         Value = (int)previous().Literal!,
                         Encoding = NumeralEncoding.Binary,
                     };
@@ -286,6 +307,7 @@ namespace Musubi.Compiler.Parsing
                     advance();
                     return new Number()
                     {
+                        Range = previous().Range,
                         Value = (int)previous().Literal!,
                         Encoding = NumeralEncoding.Scott,
                     };
@@ -293,6 +315,7 @@ namespace Musubi.Compiler.Parsing
                     advance();
                     return new Number()
                     {
+                        Range = previous().Range,
                         Value = (int)previous().Literal!,
                         Encoding = NumeralEncoding.Church,
                     };
@@ -301,17 +324,19 @@ namespace Musubi.Compiler.Parsing
                 default:
                     errors.UnexpectedError(peek(), "expression");
                     advance();
-                    return new SyntaxError();
+                    return new SyntaxError() { Range = previous().Range };
             }
         }
 
         // lambda: ("\" | "λ") identifier "." expression
         private Node lambda()
         {
+            CodeLocation start = peek().Range.A;
+
             if (expect(TokenType.Lambda))
             {
                 Token lambdaToken = previous();
-                string captured = identifier();
+                string captured = identifier() ?? "";
                 if (expect(TokenType.Dot))
                 {
                     _knownVariables.Push(captured);
@@ -322,11 +347,11 @@ namespace Musubi.Compiler.Parsing
                         Body = body,
                         CapturedVariable = captured,
                         DebugIdentifier = $"\\{captured}",
-                        Range = lambdaToken.Range,
+                        Range = new(start, body.Range.B),
                     };
                 }
             }
-            return new SyntaxError();
+            return new SyntaxError() { Range = new(start, previous().Range.B) };
         }
 
         // letIn: "let" definition* "in" expression
@@ -338,10 +363,11 @@ namespace Musubi.Compiler.Parsing
             List<Definition> definitions = [];
             if (expect(TokenType.Let))
             {
+                CodeLocation start = previous().Range.A;
                 if (match(TokenType.In))
                 {
                     errors.TokenError(previous(), "Empty let-in expression");
-                    return new SyntaxError();
+                    return new SyntaxError() { Range = previous().Range };
                 }
                 for (; ; )
                 {
@@ -372,7 +398,7 @@ namespace Musubi.Compiler.Parsing
                     }
                     if (defNotNull.Name is null)
                     {
-                        return new SyntaxError();
+                        return new SyntaxError() { Range = previous().Range };
                     }
                     definitions.Add(defNotNull);
                     _knownVariables.Push(defNotNull.Name);
@@ -395,10 +421,12 @@ namespace Musubi.Compiler.Parsing
                     // (\x.(\z.x) y) w
                     bodyWrapper = new Application()
                     {
+                        Range = new(start, body.Range.B),
                         Function = new Lambda()
                         {
                             Body = bodyWrapper ?? body,
                             CapturedVariable = def.Name,
+                            Range = def.IdToken.Range,
                             DebugIdentifier = $"Desugared from let in definition for {def.Name}",
                         },
                         Argument = def.Value,
@@ -406,7 +434,7 @@ namespace Musubi.Compiler.Parsing
                 }
                 return bodyWrapper ?? body;
             }
-            return new SyntaxError();
+            return new SyntaxError() { Range = previous().Range };
         }
 
         private bool usesOuterVariables(Node node, int depth = 0)

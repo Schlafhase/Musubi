@@ -5,15 +5,15 @@ namespace Musubi.Compiler.Scanning
         public readonly TokenType Type = type;
         public readonly string Lexeme = lexeme;
         public object? Literal { get; init; }
+        public string? DocString { get; init; }
         public readonly int Line = line;
         public readonly int Column = column;
         public readonly string Filename = filename;
-        public CodeRange Range = new(new(filename, line, column), lexeme.Length);
+        public CodeRange Range = new(new(filename, line, column), new(filename, line, column + lexeme.Length));
 
         public override string ToString()
         {
             return Type + " " + Lexeme + " at line " + Line + " column " + Column;
         }
     }
-
 }

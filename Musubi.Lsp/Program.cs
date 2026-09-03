@@ -14,6 +14,7 @@ LanguageServer server = await LanguageServer.From(options =>
         .AddDefaultLoggingProvider()
         .WithServices(ConfigureServices)
         .WithHandler<TextDocumentSyncHandler>()
+        .WithHandler<HoverHandler>()
 // .WithHandler<SemanticTokensHandler>() // highlighting is now handled by the treesitter parser
 );
 

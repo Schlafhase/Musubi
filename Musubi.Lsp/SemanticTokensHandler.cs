@@ -59,7 +59,6 @@ namespace Musubi.Lsp
             {
                 SemanticTokenType? type = t.Type switch
                 {
-                    TokenType.Comment => SemanticTokenType.Comment,
                     TokenType.BinaryNumber => SemanticTokenType.Number,
                     TokenType.ChurchNumber => SemanticTokenType.Number,
                     TokenType.Definition => SemanticTokenType.Operator,

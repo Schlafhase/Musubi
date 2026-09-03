@@ -26,6 +26,8 @@ namespace Musubi.Compiler.Scanning
         private int _line = 1;
         private int _column = 1;
 
+        private string _currentDocString = "";
+        private bool _continueDocString = false;
         private readonly Dictionary<string, List<Token>> _macros = macros ?? [];
 
         private static readonly Dictionary<string, TokenType> _keywords = new()
@@ -66,10 +68,7 @@ namespace Musubi.Compiler.Scanning
             r.FullTokens.AddRange(_tokens);
             r.ParsableTokens.AddRange(
                 from token in _tokens
-                where
-                    !new TokenType[] { TokenType.Comment, TokenType.IncludeOnce }.Contains(
-                        token.Type
-                    )
+                where !new TokenType[] { TokenType.IncludeOnce }.Contains(token.Type)
                 select token
             );
             foreach (var macro in _macros)
@@ -104,6 +103,10 @@ namespace Musubi.Compiler.Scanning
         private void scanToken()
         {
             char c = advance();
+            if (_continueDocString && c != ';' && !char.IsWhiteSpace(c))
+            {
+                _continueDocString = false;
+            }
             switch (c)
             {
                 case '(':
@@ -123,11 +126,17 @@ namespace Musubi.Compiler.Scanning
                     addToken(TokenType.ListSeparator);
                     break;
                 case ';':
-                    while (!endReached() && peek() != '\n')
+                    if (!_continueDocString)
                     {
-                        advance();
+                        _currentDocString = "";
+                        _continueDocString = true;
                     }
-                    addToken(TokenType.Comment, currentLexeme()[1..]);
+                    while (!endReached() && advance() != '\n')
+                    {
+                        _currentDocString += peek(-1);
+                    }
+                    _line++;
+                    _column = 0;
                     break;
                 case ':':
                     if (peek() == '=')
@@ -533,6 +542,9 @@ namespace Musubi.Compiler.Scanning
                 new(type, currentLexeme(), _line, _column - (_current - _start), filepath)
                 {
                     Literal = literal,
+                    DocString = string.IsNullOrWhiteSpace(_currentDocString)
+                        ? null
+                        : _currentDocString,
                 }
             );
         }

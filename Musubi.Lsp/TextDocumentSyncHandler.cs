@@ -18,7 +18,8 @@ namespace Musubi.Lsp
         private readonly List<DocumentUri> _previousDiagnosticDocuments = [];
 
         private readonly TextDocumentSelector _documentSelector = TextDocumentSelector.ForLanguage(
-            "musubi"
+            "musubi",
+            "musubi-module"
         );
 
         public TextDocumentSyncHandler(ILanguageServerFacade router, StateManager bufferManager)
