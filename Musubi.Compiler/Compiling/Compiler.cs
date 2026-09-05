@@ -140,7 +140,7 @@ namespace Musubi.Compiler.Compiling
             // define function
             _globalCode.AppendLine();
             _globalCode.AppendLine($"// {l.DebugIdentifier}");
-            _globalCode.AppendLine($"// defined at {l.Range}");
+            _globalCode.AppendLine($"// defined at somewhere");
             _globalCode.Append($"Lambda *l{l.Id}(void *raw_env, Lambda *arg) {{");
             _globalCode.Append($"e{l.Id} *env = raw_env;");
             if (captured.Contains(0))

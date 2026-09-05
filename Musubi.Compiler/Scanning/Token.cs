@@ -9,11 +9,17 @@ namespace Musubi.Compiler.Scanning
         public readonly int Line = line;
         public readonly int Column = column;
         public readonly string Filename = filename;
-        public CodeRange Range = new(new(filename, line, column), new(filename, line, column + lexeme.Length));
+        public CodeRange Range = new(
+            new(filename, line, column),
+            new(filename, line, column + lexeme.Length)
+        );
 
         public override string ToString()
         {
             return Type + " " + Lexeme + " at line " + Line + " column " + Column;
         }
+
+        public Token(Token t)
+            : this(t.Type, t.Lexeme, t.Line, t.Column, t.Filename) { }
     }
 }

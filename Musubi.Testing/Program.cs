@@ -12,7 +12,7 @@ take 5 "Hello World!"
         true
     );
 }
-catch (InvalidOperationException e)
+catch (AbandonedMutexException e)
 {
     Console.WriteLine(e.Message);
     return 1;

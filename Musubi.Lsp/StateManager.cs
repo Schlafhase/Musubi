@@ -3,6 +3,7 @@ using Musubi.Compiler;
 using Musubi.Compiler.Nodes;
 using Musubi.Compiler.Parsing;
 using Musubi.Compiler.Scanning;
+using static Musubi.Compiler.Parsing.Parser;
 using Buffer = Microsoft.Language.Xml.Buffer;
 
 namespace Musubi.Lsp
@@ -16,6 +17,7 @@ namespace Musubi.Lsp
         {
             public Node? AST;
             public List<Token>? Tokens;
+            public List<Token>? HoverTokens;
             public Errors Errors = new();
 
             public CompilationData() { }
@@ -48,7 +50,9 @@ namespace Musubi.Lsp
             ScannerResult result = s.ScanTokensFullInfo();
             data.Tokens = result.FullTokens;
             Parser p = new(result.ParsableTokens, data.Errors);
-            data.AST = p.Parse();
+            ParseResult r = p.Parse();
+            data.AST = r.Root;
+            data.HoverTokens = r.HoverTokens;
             if (
                 documentPath.EndsWith(".mbim")
                 && data.Errors.Items.Count > 0
@@ -68,6 +72,11 @@ namespace Musubi.Lsp
         public Node? GetAST(string documentPath)
         {
             return _data[documentPath].AST;
+        }
+
+        public List<Token>? GetHoverTokens(string documentPath)
+        {
+            return _data[documentPath].HoverTokens;
         }
 
         public List<Token>? GetTokens(string documentPath)

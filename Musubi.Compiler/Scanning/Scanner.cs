@@ -27,7 +27,6 @@ namespace Musubi.Compiler.Scanning
         private int _column = 1;
 
         private string _currentDocString = "";
-        private bool _continueDocString = false;
         private readonly Dictionary<string, List<Token>> _macros = macros ?? [];
 
         private static readonly Dictionary<string, TokenType> _keywords = new()
@@ -103,10 +102,6 @@ namespace Musubi.Compiler.Scanning
         private void scanToken()
         {
             char c = advance();
-            if (_continueDocString && c != ';' && !char.IsWhiteSpace(c))
-            {
-                _continueDocString = false;
-            }
             switch (c)
             {
                 case '(':
@@ -126,17 +121,13 @@ namespace Musubi.Compiler.Scanning
                     addToken(TokenType.ListSeparator);
                     break;
                 case ';':
-                    if (!_continueDocString)
-                    {
-                        _currentDocString = "";
-                        _continueDocString = true;
-                    }
                     while (!endReached() && advance() != '\n')
                     {
                         _currentDocString += peek(-1);
                     }
+                    _currentDocString += '\n';
                     _line++;
-                    _column = 0;
+                    _column = 1;
                     break;
                 case ':':
                     if (peek() == '=')
@@ -270,6 +261,10 @@ namespace Musubi.Compiler.Scanning
                         ); // column - 1 because column refers to the column after advancing
                     }
                     break;
+            }
+            if (c != ';' && !char.IsWhiteSpace(c))
+            {
+                _currentDocString = "";
             }
         }
 

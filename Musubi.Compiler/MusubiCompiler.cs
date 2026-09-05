@@ -2,6 +2,7 @@ using Musubi.Compiler.Compiling;
 using Musubi.Compiler.Nodes;
 using Musubi.Compiler.Parsing;
 using Musubi.Compiler.Scanning;
+using static Musubi.Compiler.Parsing.Parser;
 
 namespace Musubi.Compiler
 {
@@ -51,7 +52,30 @@ namespace Musubi.Compiler
             }
 
             Parser p = new(scannerResult.ParsableTokens, e);
-            Node root = p.Parse();
+            ParseResult r = p.Parse();
+            Node root = r.Root;
+
+            if (printAST)
+            {
+                Console.WriteLine("=====================Hover tokens=================");
+                foreach (Token t in r.HoverTokens)
+                {
+                    Console.WriteLine(
+                        t.Type
+                            + " '"
+                            + t.Lexeme
+                            + "' at "
+                            + t.Filename
+                            + ":"
+                            + t.Line
+                            + ":"
+                            + t.Column
+                            + " '"
+                            + t.DocString
+                            + "'"
+                    );
+                }
+            }
 
             if (printAST)
             {

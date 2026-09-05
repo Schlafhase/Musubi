@@ -1,6 +1,7 @@
 using System.Collections.Immutable;
 using Musubi.Compiler;
 using Musubi.Compiler.Nodes;
+using Musubi.Compiler.Scanning;
 using OmniSharp.Extensions.LanguageServer.Protocol.Client.Capabilities;
 using OmniSharp.Extensions.LanguageServer.Protocol.Document;
 using OmniSharp.Extensions.LanguageServer.Protocol.Models;
@@ -14,25 +15,20 @@ namespace Musubi.Lsp
             CancellationToken cancellationToken
         )
         {
-            Node? ast = stateManager.GetAST(request.TextDocument.Uri.ToString());
-            Node? n = ast is not null ? getAt(ast, request.Position) : null;
-            return new Hover()
-            {
-                Contents = new MarkedStringsOrMarkupContent(
-                    new MarkupContent()
-                    {
-                        Kind = MarkupKind.Markdown,
-                        Value = n is Variable v
-                            ? getLambdaForVariable(n, v, [])?.VariableDocString ?? "no docstring"
-                            : n?.GetType().Name
-                                + " "
-                                + n?.Range
-                                + " "
-                                + $"{request.Position.Line}:{request.Position.Character}"
-                                ?? "null",
-                    }
-                ),
-            };
+            List<Token>? hoverTokens = stateManager.GetHoverTokens(
+                request.TextDocument.Uri.ToString()
+            );
+            Token? t = hoverTokens is not null
+                ? getAt(hoverTokens, request.Position, request.TextDocument.Uri.ToString())
+                : null;
+            return t is null || t.DocString is null
+                ? null
+                : new Hover()
+                {
+                    Contents = new MarkedStringsOrMarkupContent(
+                        new MarkupContent() { Kind = MarkupKind.Markdown, Value = t.DocString }
+                    ),
+                };
         }
 
         protected override HoverRegistrationOptions CreateRegistrationOptions(
@@ -73,20 +69,16 @@ namespace Musubi.Lsp
             };
         }
 
-        private static Node? getAt(Node n, Position p)
+        private static Token? getAt(List<Token> hoverTokens, Position p, string filename)
         {
-            if (!positionInRange(p, n.Range))
+            foreach (Token t in hoverTokens)
             {
-                return null;
+                if (t.Filename == filename && positionInRange(p, t.Range))
+                {
+                    return t;
+                }
             }
-
-            return n switch
-            {
-                Document d => getAt(d.Expression, p) ?? n,
-                Lambda l => getAt(l.Body, p) ?? n,
-                Application a => getAt(a.Function, p) ?? getAt(a.Argument, p) ?? n,
-                _ => n,
-            };
+            return null;
         }
 
         private static bool positionInRange(Position p, CodeRange r)
