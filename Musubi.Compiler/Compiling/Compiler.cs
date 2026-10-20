@@ -32,13 +32,13 @@ namespace Musubi.Compiler.Compiling
                 boilerplate = reader.ReadToEnd();
             }
             document.Append(boilerplate);
-            document.Append(_globalCode.ToString());
+            document.Append(_globalCode);
             document.Append("int main() {");
-            document.Append(context.CodeBuilder.ToString());
+            document.Append(context.CodeBuilder);
             document.Append($"Lambda *result = {code};");
             // document.Append("printf(\"printing now\\n\");");
             document.Append("printScottString(result);");
-            document.Append("}");
+            document.Append('}');
             return document.ToString();
         }
 
@@ -95,7 +95,7 @@ namespace Musubi.Compiler.Compiling
                 _globalCode.Append($"Lambda *d{id}cached = NULL;");
                 // Actual definition (function that returns the body)
                 _globalCode.Append($"Lambda *d{id}() {{");
-                _globalCode.Append(definitionContext.CodeBuilder.ToString());
+                _globalCode.Append(definitionContext.CodeBuilder);
                 _globalCode.Append(
                     $"if (d{id}cached == NULL) d{id}cached = {compiledBody}; return d{id}cached;}}"
                 );
@@ -147,9 +147,9 @@ namespace Musubi.Compiler.Compiling
             {
                 _globalCode.Append("env->v0 = arg;");
             }
-            _globalCode.Append(innerContext.CodeBuilder.ToString());
+            _globalCode.Append(innerContext.CodeBuilder);
             _globalCode.Append($"return {body};");
-            _globalCode.Append("}");
+            _globalCode.Append('}');
 
             // set up the lambda for the actual return value
             context.CodeBuilder.Append($"Lambda *_l{l.Id} = malloc(sizeof(Lambda));");
