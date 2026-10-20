@@ -1,5 +1,5 @@
 using System.Collections.Immutable;
-using Musubi.Compiler.Nodes;
+using Musubi.Compiler.AST;
 using Musubi.Compiler.Scanning;
 
 namespace Musubi.Compiler.Parsing

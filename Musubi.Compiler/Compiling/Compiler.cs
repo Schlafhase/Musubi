@@ -1,6 +1,6 @@
 using System.Reflection;
 using System.Text;
-using Musubi.Compiler.Nodes;
+using Musubi.Compiler.AST;
 
 namespace Musubi.Compiler.Compiling
 {

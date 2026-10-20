@@ -1,4 +1,4 @@
-namespace Musubi.Compiler.Nodes
+namespace Musubi.Compiler.AST
 {
     public sealed class Document : Node
     {

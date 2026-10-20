@@ -1,7 +1,7 @@
 using System.Collections.Concurrent;
 using Microsoft.Extensions.Logging;
 using Musubi.Compiler;
-using Musubi.Compiler.Nodes;
+using Musubi.Compiler.AST;
 using Musubi.Compiler.Parsing;
 using Musubi.Compiler.Scanning;
 using static Musubi.Compiler.Parsing.Parser;

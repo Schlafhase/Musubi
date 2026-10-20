@@ -1,6 +1,6 @@
 using System.Collections.Immutable;
 using Musubi.Compiler;
-using Musubi.Compiler.Nodes;
+using Musubi.Compiler.AST;
 using Musubi.Compiler.Scanning;
 using OmniSharp.Extensions.LanguageServer.Protocol.Client.Capabilities;
 using OmniSharp.Extensions.LanguageServer.Protocol.Document;

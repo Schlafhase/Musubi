@@ -1,4 +1,4 @@
-namespace Musubi.Compiler.Nodes
+namespace Musubi.Compiler.AST
 {
     // TODO:
     public class NodeWithChildren { }
