@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using Microsoft.Extensions.Logging;
 using Musubi.Compiler;
 using Musubi.Compiler.Nodes;
 using Musubi.Compiler.Parsing;
@@ -8,16 +9,17 @@ using Buffer = Microsoft.Language.Xml.Buffer;
 
 namespace Musubi.Lsp
 {
-    public class StateManager
+    public class StateManager(ILogger<StateManager> logger)
     {
         private readonly ConcurrentDictionary<string, Buffer> _buffers = new();
         private readonly ConcurrentDictionary<string, CompilationData> _data = new();
 
-        private struct CompilationData
+        public struct CompilationData
         {
             public Node? AST;
-            public List<Token>? Tokens;
-            public List<Token>? HoverTokens;
+            public IReadOnlyList<Token>? Tokens;
+            public IReadOnlyList<Token>? HoverTokens;
+            public IReadOnlyList<(CodeRange range, Token symbol)>? Contexts;
             public Errors Errors = new();
 
             public CompilationData() { }
@@ -53,6 +55,11 @@ namespace Musubi.Lsp
             ParseResult r = p.Parse();
             data.AST = r.Root;
             data.HoverTokens = r.HoverTokens;
+            data.Contexts = r.Contexts;
+            logger.LogDebug(
+                $"CONTEXTS ({r.Contexts.Count}):" +
+                string.Join(", ", r.Contexts.Select(c => c.symbol.Lexeme))
+            );
             if (
                 documentPath.EndsWith(".mbim")
                 && data.Errors.Items.Count > 0
@@ -74,14 +81,19 @@ namespace Musubi.Lsp
             return _data[documentPath].AST;
         }
 
-        public List<Token>? GetHoverTokens(string documentPath)
+        public IReadOnlyList<Token>? GetHoverTokens(string documentPath)
         {
             return _data[documentPath].HoverTokens;
         }
 
-        public List<Token>? GetTokens(string documentPath)
+        public IReadOnlyList<Token>? GetTokens(string documentPath)
         {
             return _data[documentPath].Tokens;
+        }
+
+        public CompilationData? GetCompilationData(string documentPath)
+        {
+            return _data.TryGetValue(documentPath, out CompilationData data) ? data : null;
         }
     }
 }

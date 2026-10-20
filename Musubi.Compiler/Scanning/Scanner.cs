@@ -443,8 +443,20 @@ namespace Musubi.Compiler.Scanning
                 {
                     _includeOnceAlreadyIncluded.Add(path);
                 }
-                _tokens.AddRange(tokens.Where(t => t.Type != TokenType.IncludeOnce));
-                // also define macros from included file
+                _tokens.AddRange(
+                    tokens
+                        .Where(t => t.Type != TokenType.IncludeOnce)
+                        .Select(t =>
+                            t with
+                            {
+                                IncludedAt = new(
+                                    new CodeLocation(filepath, _line, _start),
+                                    new CodeLocation(filepath, _line, _column)
+                                ),
+                            }
+                        )
+                );
+                // also deine macros from included file
                 foreach (KeyValuePair<string, List<Token>> kvp in macros)
                 {
                     _macros[kvp.Key] = kvp.Value;

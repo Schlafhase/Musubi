@@ -1,25 +1,25 @@
 namespace Musubi.Compiler.Scanning
 {
-    public class Token(TokenType type, string lexeme, int line, int column, string filename)
+    public record Token(TokenType Type, string Lexeme, int Line, int Column, string Filename)
     {
-        public readonly TokenType Type = type;
-        public readonly string Lexeme = lexeme;
         public object? Literal { get; init; }
         public string? DocString { get; init; }
-        public readonly int Line = line;
-        public readonly int Column = column;
-        public readonly string Filename = filename;
-        public CodeRange Range = new(
-            new(filename, line, column),
-            new(filename, line, column + lexeme.Length)
-        );
+        public CodeRange Range =>
+            new(new(Filename, Line, Column), new(Filename, Line, Column + Lexeme.Length));
+        public CodeRange? IncludedAt;
 
         public override string ToString()
         {
             return Type + " " + Lexeme + " at line " + Line + " column " + Column;
         }
 
-        public Token(Token t)
-            : this(t.Type, t.Lexeme, t.Line, t.Column, t.Filename) { }
+        // public Token(Token t)
+        // {
+        //     Type = t.Type;
+        //     Lexeme = t.Lexeme;
+        //     Line = t.Line;
+        //     Column = t.Column;
+        //     Filename = t.Filename;
+        // }
     }
 }

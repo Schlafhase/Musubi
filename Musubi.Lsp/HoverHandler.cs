@@ -15,7 +15,7 @@ namespace Musubi.Lsp
             CancellationToken cancellationToken
         )
         {
-            List<Token>? hoverTokens = stateManager.GetHoverTokens(
+            IReadOnlyList<Token>? hoverTokens = stateManager.GetHoverTokens(
                 request.TextDocument.Uri.ToString()
             );
             Token? t = hoverTokens is not null
@@ -69,7 +69,7 @@ namespace Musubi.Lsp
             };
         }
 
-        private static Token? getAt(List<Token> hoverTokens, Position p, string filename)
+        private static Token? getAt(IEnumerable<Token> hoverTokens, Position p, string filename)
         {
             foreach (Token t in hoverTokens)
             {

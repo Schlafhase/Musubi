@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using Musubi.Compiler.Nodes;
 using Musubi.Compiler.Scanning;
 
@@ -19,6 +20,7 @@ namespace Musubi.Compiler.Parsing
             public Node Value;
             public CodeRange DefinedAt;
             public Token IdToken;
+            public CodeLocation End;
             public bool Infix;
             public int BindingPrecedence;
             public Associativity Associativity;
@@ -33,11 +35,13 @@ namespace Musubi.Compiler.Parsing
         private readonly Stack<Definition> _definedAliases = [];
 
         private readonly List<Token> _hoverTokens = [];
+        private readonly List<(CodeRange range, Token symbol)> _contexts = [];
 
         public readonly struct ParseResult
         {
             public readonly Node Root { get; init; }
-            public readonly List<Token> HoverTokens { get; init; }
+            public readonly IReadOnlyList<Token> HoverTokens { get; init; }
+            public readonly IReadOnlyList<(CodeRange range, Token symbol)> Contexts { get; init; }
         }
 
         public ParseResult Parse()
@@ -47,7 +51,12 @@ namespace Musubi.Compiler.Parsing
             {
                 errors.UnexpectedError(peek(), "end of file");
             }
-            return new ParseResult() { Root = root, HoverTokens = _hoverTokens };
+            return new ParseResult()
+            {
+                Root = root,
+                HoverTokens = _hoverTokens,
+                Contexts = _contexts,
+            };
         }
 
         // document: expression expressionEndSym?
@@ -144,12 +153,14 @@ namespace Musubi.Compiler.Parsing
                 }
             }
             Node value = expression();
+            value.DocString = docString;
             return new Definition()
             {
                 Name = name ?? "",
                 DocString = docString,
                 DefinedAt = idToken.Range,
                 IdToken = idToken,
+                End = idToken?.IncludedAt?.B ?? previous().Range.B,
                 Value = value,
                 Infix = infix,
                 BindingPrecedence = bindingPrecedence,
@@ -176,14 +187,38 @@ namespace Musubi.Compiler.Parsing
             {
                 // check for infix operators
                 Token op = peek();
-                if (
-                    op.Type is TokenType.Identifier
-                    && _definedAliases.Any(a => a.Name == (string)op.Literal! && a.Infix)
-                )
+                Definition? def_ = null;
+                try
                 {
-                    Definition def = _definedAliases.First(a => a.Name == (string)op.Literal!);
-                    Token hoverToken = new(op) { DocString = def.DocString };
+                    def_ = _definedAliases.First(a => a.Name == (string)op.Literal!);
+                    Definition def = def_.Value;
+                    string signature =
+                        (
+                            def.Infix
+                                ? (
+                                    def.Associativity switch
+                                    {
+                                        Associativity.Left => "infixl",
+                                        Associativity.Right => "infixr",
+                                        _ => "infix",
+                                    }
+                                )
+                                    + " "
+                                    + def.BindingPrecedence
+                                    + " "
+                                : ""
+                        ) + def.Name;
+                    Token hoverToken = op with
+                    {
+                        DocString = "`" + signature + "`\n" + def.DocString,
+                    };
                     _hoverTokens.Add(hoverToken);
+                }
+                catch { }
+
+                if (op.Type is TokenType.Identifier && def_.HasValue && def_.Value.Infix)
+                {
+                    Definition def = def_.Value;
                     if (def.BindingPrecedence < minBindingPrecedence)
                     {
                         break;
@@ -280,8 +315,27 @@ namespace Musubi.Compiler.Parsing
                             try
                             {
                                 Definition def = _definedAliases.First(a => a.Name == id);
+                                string signature =
+                                    (
+                                        def.Infix
+                                            ? (
+                                                def.Associativity switch
+                                                {
+                                                    Associativity.Left => "infixl",
+                                                    Associativity.Right => "infixr",
+                                                    _ => "infix",
+                                                }
+                                            )
+                                                + " "
+                                                + def.BindingPrecedence
+                                                + " "
+                                            : ""
+                                    ) + def.Name;
+                                Token hoverToken = previous() with
+                                {
+                                    DocString = "`" + signature + "`\n" + def.DocString,
+                                };
                                 referencedDefinition = def.Value;
-                                Token hoverToken = new(previous()) { DocString = def.DocString };
                                 _hoverTokens.Add(hoverToken);
                             }
                             catch (InvalidOperationException) { }
@@ -289,7 +343,7 @@ namespace Musubi.Compiler.Parsing
                             {
                                 DeBruijn = debruijn,
                                 ReferencedVariable = name,
-                                ReferencedDefinition = referencedDefinition
+                                ReferencedDefinition = referencedDefinition,
                             };
                         }
                         debruijn++;
@@ -423,6 +477,25 @@ namespace Musubi.Compiler.Parsing
                 expect("'in' or a comma", TokenType.In);
                 Node body = expression();
                 Application? bodyWrapper = null;
+                foreach (Definition def in definitions)
+                {
+                    Token next =
+                        _current + 1 < tokens.Count
+                            ? tokens[_current + 1]
+                            : new Token(0, "", int.MaxValue, 0, "");
+                    if (next.Filename == def.End.Filename)
+                    {
+                        _contexts.Add(
+                            (
+                                new(def.End, next.Range.A),
+                                new Token(TokenType.Identifier, def.Name, 0, 0, string.Empty) with
+                                {
+                                    DocString = def.DocString,
+                                }
+                            )
+                        );
+                    }
+                }
                 foreach (Definition def in definitions.Reverse<Definition>())
                 {
                     _knownVariables.Pop();

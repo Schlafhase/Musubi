@@ -46,7 +46,7 @@ namespace Musubi.Lsp
         )
         {
             string? text = _stateManager.GetBufferText(identifier.TextDocument.Uri.ToString());
-            List<Token>? tokens = _stateManager.GetTokens(identifier.TextDocument.Uri.ToString());
+            IReadOnlyList<Token>? tokens = _stateManager.GetTokens(identifier.TextDocument.Uri.ToString());
             if (text is null || tokens is null)
             {
                 await Task.CompletedTask;
