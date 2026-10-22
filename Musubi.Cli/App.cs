@@ -112,7 +112,7 @@ namespace Musubi.Cli
             File.WriteAllText(resultFile, result);
 
             // NOTE: this assumes that the musubi compiler always outputs valid C
-            // (which should be expected but since this is a hobby project, might not always be true)
+            // (which should be the case but since this is a hobby project, might not always be true)
             ProcessStartInfo ccPsi = new(cc, $"{resultFile} -o {resultFile}.out")
             {
                 CreateNoWindow = true,
@@ -124,8 +124,8 @@ namespace Musubi.Cli
                 ccProcess.Start();
                 ccProcess.WaitForExit();
 
-                ProcessStartInfo programPsu = new(resultFile + ".out") { CreateNoWindow = true };
-                using Process p = new() { StartInfo = programPsu };
+                ProcessStartInfo programPsi = new(resultFile + ".out") { CreateNoWindow = true };
+                using Process p = new() { StartInfo = programPsi };
                 p.Start();
                 p.WaitForExit();
 
