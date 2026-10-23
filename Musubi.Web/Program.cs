@@ -108,8 +108,10 @@ public static class Program
                     }
                     catch (Exception e)
                     {
-                        if (e is InvalidOperationException)
-                            Console.WriteLine(e.Message);
+                        return Results.Problem(
+                                detail: e.Message,
+                                statusCode: StatusCodes.Status500InternalServerError
+                                );
                     }
                     finally
                     {
