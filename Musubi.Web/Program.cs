@@ -89,7 +89,7 @@ public static class Program
                         ccProcess.Start();
                         ccProcess.WaitForExit();
 
-                        ProcessStartInfo programPsi = new(jobId + ".out")
+                        ProcessStartInfo programPsi = new("./" + jobId + ".out")
                         {
                             CreateNoWindow = true,
                             RedirectStandardOutput = true,
@@ -108,10 +108,7 @@ public static class Program
                     }
                     catch (Exception e)
                     {
-                        return Results.Problem(
-                                detail: e.Message,
-                                statusCode: StatusCodes.Status500InternalServerError
-                                );
+                        return Results.InternalServerError(e.Message);
                     }
                     finally
                     {
@@ -119,7 +116,7 @@ public static class Program
                         File.Delete(jobId.ToString() + ".out");
                         Console.SetOut(cout);
                     }
-                    return sw.ToString();
+                    return Results.Text(sw.ToString());
                 }
             )
             .RequireRateLimiting("run");
