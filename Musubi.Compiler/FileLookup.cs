@@ -12,15 +12,19 @@ namespace Musubi.Compiler
 
         public static string GetPath(string path)
         {
+            Console.WriteLine("Path requested: " + path);
             if (path.StartsWith("~/"))
             {
-                return Path.Combine(
+                string result = Path.Combine(
                     Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
                     path[2..]
                 );
+                Console.WriteLine("Resolved to " + result);
+                return result;
             }
             else if (Path.IsPathFullyQualified(path))
             {
+                Console.WriteLine("Resolved to " + path);
                 return path;
             }
 
@@ -29,6 +33,7 @@ namespace Musubi.Compiler
                 string ret = getPath(path, dir);
                 if (File.Exists(ret))
                 {
+                    Console.WriteLine("Resolved to " + ret);
                     return ret;
                 }
             }
