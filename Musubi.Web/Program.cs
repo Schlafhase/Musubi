@@ -53,8 +53,39 @@ public static class Program
             };
         });
 
+        builder.Services.AddCors(options =>
+        {
+            if (builder.Environment.IsDevelopment())
+            {
+                options.AddPolicy(
+                    "MusubiCors",
+                    policy =>
+                    {
+                        policy
+                            .WithOrigins("http://localhost:5103")
+                            .AllowAnyHeader()
+                            .AllowAnyMethod();
+                    }
+                );
+            }
+            else
+            {
+                options.AddPolicy(
+                    "MusubiCors",
+                    policy =>
+                    {
+                        policy
+                            .WithOrigins("https://musubi.schlafhase.uk")
+                            .WithMethods("POST")
+                            .WithHeaders("Content-Type");
+                    }
+                );
+            }
+        });
+
         WebApplication app = builder.Build();
 
+        app.UseCors("MusubiCors");
         app.UseRateLimiter();
 
         // Configure the HTTP request pipeline.
@@ -126,6 +157,9 @@ public static class Program
             app.UseSwagger();
             app.UseSwaggerUI();
         }
+
+        app.UseDefaultFiles();
+        app.UseStaticFiles();
 
         app.Run();
     }

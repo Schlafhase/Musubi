@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html data-theme="auto">
+
+<head>
+  <title>Musubi Web Sandbox</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+  <h1>Try Musubi</h1>
+  <button id="theme-toggle">Toggle theme</button>
+  <p>
+    Musubi is a functional programming language designed to be as close to the Lambda Calculus as possible while still
+    being usable. Resources about Musubi can be found on <a href="https://github.com/Schlafhase/Musubi">the GitHub
+      repository</a>.
+  </p>
+  <p>
+    This little website allows you to try Musubi without installing it. To make it actually useful, the server also has
+    the <a href="https://github.com/Schlafhase/MusubiStdlib">standard library</a> installed. Include it using
+    <code>#include stdlib</code>.
+  </p>
+  <p>
+    If you want to do some actual development in Musubi, please install the compiler locally and use a code editor. I made a treesitter
+    parser for syntax highlighting and an LSP server which really help you write Musubi code.
+  </p>
+  <select id="example"></select>
+  <textarea spellcheck="false" id="source">
+  </textarea>
+  <button id="submit">Run</button>
+  <p id="status">
+  </p>
+  <code id="result">
+  </code>
+  <div class="vspace"></div>
+  <script src="index.js"></script>
+</body>
+
+
+</html>

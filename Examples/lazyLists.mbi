@@ -1,7 +1,6 @@
 #include stdlib
 #include stdlib/lazyLists.mbim ; optional module in stdlib (not included by default)
 
-
 let
   ; Lazy lists allow you to define infinite sequences.
   fibonacciNumbers :=
