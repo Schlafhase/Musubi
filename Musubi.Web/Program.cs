@@ -108,7 +108,7 @@ public static class Program
                     }
                     catch (Exception e)
                     {
-                        return Results.InternalServerError(e.Message);
+                        return Results.InternalServerError(sw + "\n" + e.Message);
                     }
                     finally
                     {
