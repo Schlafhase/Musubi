@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.Extensions.FileProviders;
 using Musubi.Compiler;
 
 namespace Musubi.Web;
@@ -109,9 +110,9 @@ public static class Program
                     try
                     {
                         string c = MusubiCompiler.Compile(source, "Musubi Browser project");
-                        File.WriteAllText(jobId.ToString() + ".c", c);
+                        File.WriteAllText("/tmp/" + jobId.ToString() + ".c", c);
 
-                        ProcessStartInfo ccPsi = new("gcc", $"{jobId}.c -o {jobId}.out")
+                        ProcessStartInfo ccPsi = new("gcc", $"/tmp/{jobId}.c -o /tmp/{jobId}.out")
                         {
                             CreateNoWindow = true,
                         };
@@ -120,7 +121,7 @@ public static class Program
                         ccProcess.Start();
                         ccProcess.WaitForExit();
 
-                        ProcessStartInfo programPsi = new("./" + jobId + ".out")
+                        ProcessStartInfo programPsi = new("/tmp/" + jobId + ".out")
                         {
                             CreateNoWindow = true,
                             RedirectStandardOutput = true,
@@ -143,8 +144,8 @@ public static class Program
                     }
                     finally
                     {
-                        File.Delete(jobId.ToString() + ".c");
-                        File.Delete(jobId.ToString() + ".out");
+                        File.Delete("/tmp/" + jobId.ToString() + ".c");
+                        File.Delete("/tmp/" + jobId.ToString() + ".out");
                         Console.SetOut(cout);
                     }
                     return Results.Ok(sw.ToString());
@@ -158,8 +159,10 @@ public static class Program
             app.UseSwaggerUI();
         }
 
-        app.UseDefaultFiles();
-        app.UseStaticFiles();
+        PhysicalFileProvider fileProvider = new(Path.Combine(app.Environment.ContentRootPath, "wwwroot"));
+
+        app.UseDefaultFiles(new DefaultFilesOptions { FileProvider = fileProvider });
+        app.UseStaticFiles(new StaticFileOptions { FileProvider = fileProvider });
 
         app.Run();
     }

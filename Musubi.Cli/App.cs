@@ -108,7 +108,7 @@ namespace Musubi.Cli
                 Console.WriteLine(e.Message);
                 return;
             }
-            string resultFile = Guid.NewGuid().ToString() + ".c";
+            string resultFile = "/tmp/" + Guid.NewGuid().ToString() + ".c";
             File.WriteAllText(resultFile, result);
 
             // NOTE: this assumes that the musubi compiler always outputs valid C
@@ -143,7 +143,7 @@ namespace Musubi.Cli
             }
         }
 
-        private List<string> qualifyLibraryDirs(List<string>? dirs)
+        private static List<string> qualifyLibraryDirs(List<string>? dirs)
         {
             if (dirs is null)
             {
