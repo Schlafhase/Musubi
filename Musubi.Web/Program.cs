@@ -116,7 +116,7 @@ public static class Program
                         File.Delete(jobId.ToString() + ".out");
                         Console.SetOut(cout);
                     }
-                    return Results.Text(sw.ToString());
+                    return Results.Ok(sw.ToString());
                 }
             )
             .RequireRateLimiting("run");
