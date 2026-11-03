@@ -1,12 +1,12 @@
 namespace Musubi.Compiler.Scanning
 {
-    public readonly struct ScannerResult
+    public readonly struct ScannerOut
     {
         public readonly List<Token> ParsableTokens = [];
         public readonly List<Token> FullTokens = [];
         public readonly Dictionary<string, List<Token>> Macros = [];
 
-        public ScannerResult() { }
+        public ScannerOut() { }
     }
 
     public class Scanner(
@@ -59,11 +59,11 @@ namespace Musubi.Compiler.Scanning
         private readonly HashSet<string> _includeOnceAlreadyIncluded =
             includeOnceAlreadyIncluded ?? [];
 
-        public ScannerResult ScanTokensFullInfo()
+        public ScannerOut ScanTokensFullInfo()
         {
             ScanTokensInIncludedFile();
             _tokens.Add(new(TokenType.EOF, "", _line, _column + 1, filepath));
-            ScannerResult r = new();
+            ScannerOut r = new();
             r.FullTokens.AddRange(_tokens);
             r.ParsableTokens.AddRange(
                 from token in _tokens

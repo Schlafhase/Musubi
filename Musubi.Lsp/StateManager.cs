@@ -49,7 +49,7 @@ namespace Musubi.Lsp
             CompilationData data = new();
             data.Errors.FilenameToSource.Add(documentPath, buffer.GetText(0, buffer.Length));
             Scanner s = new(buffer.GetText(0, buffer.Length), documentPath, data.Errors);
-            ScannerResult result = s.ScanTokensFullInfo();
+            ScannerOut result = s.ScanTokensFullInfo();
             data.Tokens = result.FullTokens;
             Parser p = new(result.ParsableTokens, data.Errors);
             ParseResult r = p.Parse();

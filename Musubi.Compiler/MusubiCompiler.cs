@@ -31,7 +31,7 @@ namespace Musubi.Compiler
             }
 
             Scanner s = new(source, filename, e);
-            ScannerResult scannerResult = s.ScanTokensFullInfo();
+            ScannerOut scannerResult = s.ScanTokensFullInfo();
 
             if (printAST)
             {
