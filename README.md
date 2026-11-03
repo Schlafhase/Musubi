@@ -45,7 +45,7 @@ Lambda Calculus as possible while still being usable.
 
 #### Using dotnet tools
 
-If you have the .NET SDK installed, you can install Waddle with this simple
+If you have the .NET SDK installed, you can install the Musubi compiler with this simple
 command:
 
 ```sh
