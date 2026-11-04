@@ -1,4 +1,4 @@
 namespace Musubi.Compiler.CST
 {
-    public sealed class LetIn : CSTNonLeaf { }
+    public sealed class LetIn : CSTNonLeaf;
 }
