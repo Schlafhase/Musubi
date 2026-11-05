@@ -4,7 +4,7 @@ using Musubi.Compiler.Scanning;
 
 namespace Musubi.Compiler.Parsing
 {
-    public class Parser(List<Token> tokens, Errors errors)
+    public class Parser(ScannerOut input)
     {
     }
 }

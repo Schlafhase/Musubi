@@ -3,8 +3,8 @@ namespace Musubi.Compiler.Scanning
     public record Token(TokenType Type, string Lexeme, int Line, int Column, string Filename)
     {
         public object? Literal { get; init; }
-        public Trivia? LeadingTrivia;
-        public Trivia? TrailingTrivia;
+        public List<Trivia> LeadingTrivia = [];
+        public List<Trivia> TrailingTrivia = [];
         public string? DocString { get; init; }
         public CodeRange Range =>
             new(new(Filename, Line, Column), new(Filename, Line, Column + Lexeme.Length));

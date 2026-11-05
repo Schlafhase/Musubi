@@ -2,6 +2,8 @@ namespace Musubi.Compiler.Scanning
 {
     public enum TokenType
     {
+        EOF,
+
         LeftParen,
         RightParen,
         Dot,
@@ -9,13 +11,16 @@ namespace Musubi.Compiler.Scanning
         Definition,
         ListSeparator,
 
-        // literals
         Identifier,
-        Filename,
+
+        // literals
         Number,
         ScottNumber,
         ChurchNumber,
         BinaryNumber,
+        String,
+        Char,
+        Filename,
 
         // Keywords
         Let,
@@ -24,8 +29,15 @@ namespace Musubi.Compiler.Scanning
         Infixl,
         Infixr,
 
-        IncludeOnce, // not really a token (never reaches the parser)
+        // tokens that will get expanded or converted to trivia in the expander
+        IncludeOnce,
+        Define,
+        Include,
 
-        EOF,
+        // marker tokens (produced by the expander)
+        BeginInclude,
+        EndInclude,
+        BeginMacro,
+        EndMacro,
     }
 }

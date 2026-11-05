@@ -2,32 +2,34 @@ namespace Musubi.Compiler.Scanning
 {
     public readonly struct ScannerOut
     {
-        public readonly List<Token> ParsableTokens = [];
-        public readonly List<Token> FullTokens = [];
+        public readonly List<Token> Tokens = [];
         public readonly Dictionary<string, List<Token>> Macros = [];
+        public required Errors Errors { get; init; }
 
         public ScannerOut() { }
     }
 
+    public static class MusubiSourceScanExtension
+    {
+        public static ScannerOut ScanTokens(this MusubiSource source, Errors errors)
+        {
+            Scanner s = new(source, errors);
+            return s.ScanTokens();
+        }
+    }
+
     public class Scanner(
-        string source,
-        string filepath,
-        Errors errors,
-        HashSet<string>? includedFrom = null,
-        HashSet<string>? includeOnceAlreadyIncluded = null,
-        Dictionary<string, List<Token>>? macros = null
+            MusubiSource source,
+        Errors errors
     )
     {
-        private readonly string _source = source;
+        private readonly string _source = source.Source;
         private readonly List<Token> _tokens = [];
 
         private int _start;
         private int _current;
         private int _line = 1;
         private int _column = 1;
-
-        private string _currentDocString = "";
-        private readonly Dictionary<string, List<Token>> _macros = macros ?? [];
 
         private static readonly Dictionary<string, TokenType> _keywords = new()
         {
@@ -56,48 +58,19 @@ namespace Musubi.Compiler.Scanning
 
         private static readonly HashSet<char> _allowedFilenameChars = ['_', '-', '.', '/', '~'];
 
-        private readonly HashSet<string> _includeOnceAlreadyIncluded =
-            includeOnceAlreadyIncluded ?? [];
-
-        public ScannerOut ScanTokensFullInfo()
-        {
-            ScanTokensInIncludedFile();
-            _tokens.Add(new(TokenType.EOF, "", _line, _column + 1, filepath));
-            ScannerOut r = new();
-            r.FullTokens.AddRange(_tokens);
-            r.ParsableTokens.AddRange(
-                from token in _tokens
-                where !new TokenType[] { TokenType.IncludeOnce }.Contains(token.Type)
-                select token
-            );
-            foreach (var macro in _macros)
-            {
-                r.Macros[macro.Key] = macro.Value;
-            }
-
-            return r;
-        }
-
-        public List<Token> ScanTokens()
-        {
-            ScanTokensInIncludedFile();
-            _tokens.Add(new(TokenType.EOF, "", _line, _column + 1, filepath));
-            return [.. _tokens.Where(t => t.Type != TokenType.IncludeOnce)];
-        }
-
-        public (
-            List<Token> tokens,
-            Dictionary<string, List<Token>> macros
-        ) ScanTokensInIncludedFile()
+        public ScannerOut ScanTokens()
         {
             while (!endReached())
             {
                 _start = _current;
                 scanToken();
             }
-
-            return (_tokens, _macros);
+            _tokens.Add(new(TokenType.EOF, "", _line, _column + 1, source.Filename));
+            ScannerOut r = new() { Errors = errors };
+            r.Tokens.AddRange(_tokens);
+            return r;
         }
+
 
         private void scanToken()
         {
@@ -177,7 +150,7 @@ namespace Musubi.Compiler.Scanning
                                 default:
                                     errors.Error(
                                         @"Unknown escape sequence. To escape a \ use ""\\""",
-                                        filepath,
+                                        source.Filename,
                                         _line,
                                         _column,
                                         2
@@ -220,7 +193,7 @@ namespace Musubi.Compiler.Scanning
                                     default:
                                         errors.Error(
                                             @"Unknown escape sequence. To escape a \ use ""\\""",
-                                            filepath,
+                                            source.Filename,
                                             _line,
                                             _column,
                                             2
@@ -241,7 +214,7 @@ namespace Musubi.Compiler.Scanning
                         {
                             errors.Error(
                                 $"Expected '\"' but got {(peek() == '\n' ? "\\n" : "EOF")}",
-                                filepath,
+                                source.Filename,
                                 _line,
                                 _column
                             );
@@ -255,7 +228,7 @@ namespace Musubi.Compiler.Scanning
                     {
                         errors.Error(
                             "Unexpected character '" + c + "'",
-                            filepath,
+                            source.Filename,
                             _line,
                             _column - 1
                         ); // column - 1 because column refers to the column after advancing
@@ -319,7 +292,7 @@ namespace Musubi.Compiler.Scanning
                 string name = identifierString();
                 if (string.IsNullOrEmpty(name))
                 {
-                    errors.Error("Expected macro name", filepath, _line, _column);
+                    errors.Error("Expected macro name", source.Filename, _line, _column);
                     return;
                 }
                 _start = _current;
@@ -331,10 +304,10 @@ namespace Musubi.Compiler.Scanning
                     c = advance();
                 }
                 Errors macroErrors = new();
-                macroErrors.FilenameToSource[$"Macro '{name}' defined in {filepath}"] = macroSource;
+                macroErrors.FilenameToSource[$"Macro '{name}' defined in {source.Filename}"] = macroSource;
                 Scanner macroScanner = new(
                     macroSource,
-                    $"Macro '{name}' defined in {filepath}",
+                    $"Macro '{name}' defined in {source.Filename}",
                     macroErrors
                 );
                 List<Token> scanResult =
