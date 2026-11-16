@@ -27,6 +27,9 @@ namespace Musubi.Compiler.Scanning
         private int _line = 1;
         private int _column = 1;
 
+        // attempt to parse next token as filename
+        private bool _expectFilename;
+
         private readonly List<Trivia> _currentLeadingTrivia = [];
         private readonly List<Trivia> _currentTrailingTrivia = [];
         private bool _addingToLeadingTrivia = true;
@@ -67,7 +70,8 @@ namespace Musubi.Compiler.Scanning
                 _start = _current;
                 scanToken();
             }
-            _tokens.Add(new(TokenType.EOF, "", _line, _column + 1, source.Filename));
+            _column++;
+            addToken(TokenType.EOF);
             ScannerOut r = new() { Errors = errors };
             r.Tokens.AddRange(_tokens);
             return r;
@@ -78,6 +82,43 @@ namespace Musubi.Compiler.Scanning
             char c = advance();
             switch (c)
             {
+                // trivia
+                case ';':
+                    int start = _current;
+                    while (!endReached() && advance() != '\n') { }
+                    string comment = _source[start..(_current - 1)];
+                    _currentTrivia.Add(new Comment(comment));
+                    if (peek(-1) == '\n')
+                    {
+                        goto newline;
+                    }
+                    break;
+                case '\r':
+                    break;
+                case ' ':
+                case '\t':
+                    if (_currentTrivia.Count >= 1 && _currentTrivia[^1] is Whitespace ws)
+                    {
+                        _currentTrivia[^1] = ws with { Text = ws.Text + c };
+                    }
+                    else
+                    {
+                        _currentTrivia.Add(new Whitespace(c.ToString()));
+                    }
+                    break;
+                case '\n':
+                    newline:
+                    _currentTrivia.Add(new Newline());
+                    _addingToLeadingTrivia = true;
+                    _line++;
+                    _column = 1;
+                    break;
+
+                // filename
+                case char when _expectFilename:
+                    filename();
+                    break;
+
                 // simple tokens
                 case '(':
                     addToken(TokenType.LeftParen);
@@ -107,34 +148,24 @@ namespace Musubi.Compiler.Scanning
                         identifier();
                     }
                     break;
-                // trivia
-                case ';':
-                    string comment = "";
-                    while (!endReached() && advance() != '\n')
+
+                // directives
+                case '#':
+                    if (checkNextAndAdvance("include"))
                     {
-                        comment += peek(-1);
+                        addToken(TokenType.Include);
+                        _expectFilename = true;
                     }
-                    _currentTrivia.Add(new Comment(comment));
-                    break;
-                case '\r':
-                    break;
-                case ' ':
-                case '\t':
-                    if (_currentTrivia.Count >= 1 && _currentTrivia[^1] is Whitespace ws)
+                    else if (checkNextAndAdvance("once"))
                     {
-                        _currentTrivia[^1] = ws with { Text = ws.Text + c };
+                        addToken(TokenType.IncludeOnce);
                     }
-                    else
+                    else if (checkNextAndAdvance("define"))
                     {
-                        _currentTrivia.Add(new Whitespace(c.ToString()));
+                        addToken(TokenType.Define);
                     }
                     break;
-                case '\n':
-                    _currentTrivia.Add(new Newline());
-                    _addingToLeadingTrivia = true;
-                    _line++;
-                    _column = 1;
-                    break;
+
                 // literal shenanigans
                 case char when digit(c):
                     number();
@@ -149,6 +180,7 @@ namespace Musubi.Compiler.Scanning
                 case char when !_disallowedIdentifierChars.Contains(c):
                     identifier();
                     break;
+
                 default:
                     errors.Error(
                         "Unexpected character '" + c + "'",
@@ -162,10 +194,52 @@ namespace Musubi.Compiler.Scanning
 
         private void stringLiteral()
         {
+            string value = "";
             while (peek() is not ('"' or '\n' or '\0'))
             {
                 _start = _current;
-                // TODO: ...
+                char next = advance();
+                if (next == '\\')
+                {
+                    switch (advance())
+                    {
+                        case '\\':
+                            next = '\\';
+                            break;
+                        case '"':
+                            next = '"';
+                            break;
+                        case 'n':
+                            next = '\n';
+                            break;
+                        case 't':
+                            next = '\t';
+                            break;
+                        default:
+                            errors.Error(
+                                @"Unknown escape sequence. To escape a '\' use ""\\""",
+                                source.Filename,
+                                _line,
+                                _column
+                            );
+                            break;
+                    }
+                }
+                value += next;
+            }
+            if (peek() == '"')
+            {
+                advance();
+                addToken(TokenType.String, value);
+            }
+            else
+            {
+                errors.Error(
+                    $"Expected '\"' but got {(peek() == '\n' ? "\\n" : "EOF")}",
+                    source.Filename,
+                    _line,
+                    _column
+                );
             }
         }
 
@@ -202,7 +276,7 @@ namespace Musubi.Compiler.Scanning
             }
             if (advance() == '\'')
             {
-                addToken(TokenType.Number, (int)value);
+                addToken(TokenType.Char, value);
             }
             else
             {
@@ -261,7 +335,7 @@ namespace Musubi.Compiler.Scanning
             }
         }
 
-        private string? filename()
+        private void filename()
         {
             while (alphaNumeric(peek()) || _allowedFilenameChars.Contains(peek()))
             {
@@ -269,13 +343,13 @@ namespace Musubi.Compiler.Scanning
             }
             if (_current == _start)
             {
-                errors.Error("Expected filename", filepath, _line, _column);
-                return null;
+                errors.Error("Expected filename", source.Filename, _line, _column);
             }
             else
             {
-                return currentLexeme();
+                addToken(TokenType.Filename, currentLexeme());
             }
+            _expectFilename = false;
         }
 
         private char advance()
@@ -290,11 +364,27 @@ namespace Musubi.Compiler.Scanning
 
         private char peek(int offset = 0)
         {
-            if (_current + offset + 1 >= _source.Length)
+            if (_current + offset >= _source.Length)
             {
                 return '\0';
             }
             return _source[_current + offset];
+        }
+
+        // NOTE: cannot handle newlines in parameter text
+        private bool checkNextAndAdvance(string text)
+        {
+            if (_current + text.Length > _source.Length)
+            {
+                return false;
+            }
+            if (_source[_current..(_current + text.Length)] == text)
+            {
+                _column += text.Length;
+                _current += text.Length;
+                return true;
+            }
+            return false;
         }
 
         private string currentLexeme()
@@ -302,20 +392,11 @@ namespace Musubi.Compiler.Scanning
             return _source[_start.._current];
         }
 
-        private bool alphabetic(char c)
-        {
-            return char.ToLower(c) is >= 'a' and <= 'z';
-        }
+        private static bool alphabetic(char c) => char.ToLower(c) is >= 'a' and <= 'z';
 
-        private bool digit(char c)
-        {
-            return c is >= '0' and <= '9';
-        }
+        private static bool digit(char c) => c is >= '0' and <= '9';
 
-        private bool alphaNumeric(char c)
-        {
-            return alphabetic(c) || digit(c);
-        }
+        private static bool alphaNumeric(char c) => alphabetic(c) || digit(c);
 
         private void addToken(TokenType type, object? literal = null)
         {

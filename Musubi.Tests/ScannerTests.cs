@@ -63,51 +63,51 @@ namespace Musubi.Tests
 
             using (Assert.EnterMultipleScope())
             {
+                TokenType[] expected =
+                [
+                    TokenType.Let,
+                    TokenType.Identifier,
+                    TokenType.Definition,
+                    TokenType.Number,
+                    TokenType.ListSeparator,
+                    //
+                    TokenType.Identifier,
+                    TokenType.Definition,
+                    TokenType.String,
+                    TokenType.ListSeparator,
+                    //
+                    TokenType.Identifier,
+                    TokenType.Definition,
+                    TokenType.Char,
+                    TokenType.ListSeparator,
+                    //
+                    TokenType.Identifier,
+                    TokenType.Definition,
+                    TokenType.Identifier,
+                    TokenType.ListSeparator,
+                    //
+                    TokenType.Identifier,
+                    TokenType.Definition,
+                    TokenType.ScottNumber,
+                    TokenType.ListSeparator,
+                    //
+                    TokenType.Identifier,
+                    TokenType.Definition,
+                    TokenType.ChurchNumber,
+                    TokenType.ListSeparator,
+                    //
+                    TokenType.Identifier,
+                    TokenType.Definition,
+                    TokenType.BinaryNumber,
+                    TokenType.ListSeparator,
+                    //
+                    TokenType.In,
+                    TokenType.EOF,
+                ];
                 Assert.That(
                     result.Tokens.Select(t => t.Type),
-                    Is.EqualTo(
-                        new[]
-                        {
-                            TokenType.Let,
-                            TokenType.Identifier,
-                            TokenType.Definition,
-                            TokenType.Number,
-                            TokenType.ListSeparator,
-                            //
-                            TokenType.Identifier,
-                            TokenType.Definition,
-                            TokenType.String,
-                            TokenType.ListSeparator,
-                            //
-                            TokenType.Identifier,
-                            TokenType.Definition,
-                            TokenType.Char,
-                            TokenType.ListSeparator,
-                            //
-                            TokenType.Identifier,
-                            TokenType.Definition,
-                            TokenType.Identifier,
-                            TokenType.ListSeparator,
-                            //
-                            TokenType.Identifier,
-                            TokenType.Definition,
-                            TokenType.ScottNumber,
-                            TokenType.ListSeparator,
-                            //
-                            TokenType.Identifier,
-                            TokenType.Definition,
-                            TokenType.ChurchNumber,
-                            TokenType.ListSeparator,
-                            //
-                            TokenType.Identifier,
-                            TokenType.Definition,
-                            TokenType.BinaryNumber,
-                            TokenType.ListSeparator,
-                            //
-                            TokenType.In,
-                            TokenType.EOF,
-                        }
-                    )
+                    Is.EqualTo(expected),
+                    () => $"actual: [{string.Join(", ", result.Tokens.Select(t => t.Type))}]"
                 );
                 Assert.That(result.Tokens.Any(t => t.Literal is 123));
                 Assert.That(result.Tokens.Any(t => t.Literal is "hello"));
@@ -147,29 +147,25 @@ namespace Musubi.Tests
             using (Assert.EnterMultipleScope())
             {
                 // look at trivia for `a`
-                Assert.That(
-                    result.Tokens[0].LeadingTrivia,
-                    Is.EqualTo(
-                        new List<Trivia>
-                        {
-                            new Newline(),
-                            //
-                            new Comment(" bla1"),
-                            new Newline(),
-                            //
-                            new Whitespace("   \t "),
-                            new Comment(" bla2"),
-                            new Newline(),
-                            //
-                            new Newline(),
-                            //
-                            new Comment(" bla3"),
-                            new Newline(),
-                            //
-                            new Newline(),
-                        }
-                    )
-                );
+                List<Trivia> expected =
+                [
+                    new Newline(),
+                    //
+                    new Comment(" bla1"),
+                    new Newline(),
+                    //
+                    new Whitespace("   \t "),
+                    new Comment(" bla2"),
+                    new Newline(),
+                    //
+                    new Newline(),
+                    //
+                    new Comment(" bla3"),
+                    new Newline(),
+                    //
+                    new Newline(),
+                ];
+                Assert.That(result.Tokens[0].LeadingTrivia, Is.EqualTo(expected));
                 Assert.That(
                     result.Tokens[0].TrailingTrivia,
                     Is.EqualTo(
@@ -183,20 +179,16 @@ namespace Musubi.Tests
                 );
 
                 // look at trivia for `b`
-                Assert.That(
-                    result.Tokens[1].LeadingTrivia,
-                    Is.EqualTo(
-                        new List<Trivia>
-                        {
-                            new Comment("bla5"),
-                            new Newline(),
-                            //
-                            new Newline(),
-                            //
-                            new Whitespace(" "),
-                        }
-                    )
-                );
+                List<Trivia> expected1 =
+                [
+                    new Comment("bla5"),
+                    new Newline(),
+                    //
+                    new Newline(),
+                    //
+                    new Whitespace(" "),
+                ];
+                Assert.That(result.Tokens[1].LeadingTrivia, Is.EqualTo(expected1));
                 Assert.That(
                     result.Tokens[1].TrailingTrivia,
                     Is.EqualTo(
@@ -210,23 +202,19 @@ namespace Musubi.Tests
                 );
 
                 // test trivia for EOF token
-                Assert.That(
-                    result.Tokens[2].LeadingTrivia,
-                    Is.EqualTo(
-                        new List<Trivia>
-                        {
-                            new Comment("bla7"),
-                            new Newline(),
-                            //
-                            new Newline(),
-                            //
-                            new Comment(" bla8"),
-                            new Newline(),
-                            //
-                            new Newline(),
-                        }
-                    )
-                );
+                List<Trivia> expected2 =
+                [
+                    new Comment("bla7"),
+                    new Newline(),
+                    //
+                    new Newline(),
+                    //
+                    new Comment(" bla8"),
+                    new Newline(),
+                    //
+                    new Newline(),
+                ];
+                Assert.That(result.Tokens[2].LeadingTrivia, Is.EqualTo(expected2));
             }
         }
 
@@ -239,29 +227,29 @@ namespace Musubi.Tests
                 #include stdlib
                 #define -> a b
                 c
+                #once
                 """,
                 "directives.mbi"
             );
 
-            Assert.That(
-                result.Tokens.Select(t => t.Type),
-                Is.EqualTo(
-                    new TokenType[]
-                    {
-                        TokenType.IncludeOnce,
-                        //
-                        TokenType.Include,
-                        TokenType.Filename,
-                        //
-                        TokenType.Define,
-                        TokenType.Identifier,
-                        TokenType.Identifier,
-                        TokenType.Identifier,
-                        //
-                        TokenType.Identifier,
-                    }
-                )
-            );
+            TokenType[] expected =
+            [
+                TokenType.IncludeOnce,
+                //
+                TokenType.Include,
+                TokenType.Filename,
+                //
+                TokenType.Define,
+                TokenType.Identifier,
+                TokenType.Identifier,
+                TokenType.Identifier,
+                //
+                TokenType.Identifier,
+                //
+                TokenType.IncludeOnce,
+                TokenType.EOF,
+            ];
+            Assert.That(result.Tokens.Select(t => t.Type), Is.EqualTo(expected));
         }
     }
 }

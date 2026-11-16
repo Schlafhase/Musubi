@@ -2,7 +2,6 @@ using Musubi.Compiler.Compiling;
 using Musubi.Compiler.AST;
 using Musubi.Compiler.Parsing;
 using Musubi.Compiler.Scanning;
-using static Musubi.Compiler.Parsing.Parser;
 
 namespace Musubi.Compiler
 {
@@ -22,89 +21,90 @@ namespace Musubi.Compiler
             List<string>? additionalLibraryDirs = null
         )
         {
-            Errors e = new();
-            e.FilenameToSource[filename] = source;
-
-            if (additionalLibraryDirs is not null)
-            {
-                FileLookup.MusubiLibraryDirs.AddRange(additionalLibraryDirs);
-            }
-
-            Scanner s = new(source, filename, e);
-            ScannerOut scannerResult = s.ScanTokensFullInfo();
-
-            if (printAST)
-            {
-                foreach (Token t in scannerResult.FullTokens)
-                {
-                    Console.WriteLine(
-                        t.Type
-                            + " '"
-                            + t.Lexeme
-                            + "' at "
-                            + t.Filename
-                            + ":"
-                            + t.Line
-                            + ":"
-                            + t.Column
-                    );
-                }
-            }
-
-            Parser p = new(scannerResult.ParsableTokens, e);
-            ParseResult r = p.Parse();
-            Node root = r.Root;
-
-            if (printAST)
-            {
-                Console.WriteLine("=====================Hover tokens=================");
-                foreach (Token t in r.HoverTokens)
-                {
-                    Console.WriteLine(
-                        t.Type
-                            + " '"
-                            + t.Lexeme
-                            + "' at "
-                            + t.Filename
-                            + ":"
-                            + t.Line
-                            + ":"
-                            + t.Column
-                            + " '"
-                            + t.DocString
-                            + "'"
-                    );
-                }
-            }
-
-            if (printAST)
-            {
-                printNode(root);
-            }
-
-            e.ReportAll();
-            if (e.HasErrors)
-            {
-                throw new InvalidOperationException(
-                    $"The source has {e.Items.Count(i => i.Severity == Severity.Error)} errors and cannot be compiled."
-                );
-            }
-
-            int warningsCount = e.Items.Count(i => i.Severity == Severity.Warning);
-            if (warningsCount > 0)
-            {
-                Console.ForegroundColor = ConsoleColor.Yellow;
-                Console.WriteLine($"Compiling with {warningsCount} warnings.");
-                Console.ForegroundColor = ConsoleColor.Gray;
-            }
-
-            ICompiler c = targetLanguage switch
-            {
-                TargetLanguage.C => new Compiling.Compiler(root),
-                TargetLanguage.LC => new CompilerToLC(root),
-                _ => throw new NotImplementedException(),
-            };
-            return c.Compile();
+            throw new NotImplementedException();
+            // Errors e = new();
+            // e.FilenameToSource[filename] = source;
+            //
+            // if (additionalLibraryDirs is not null)
+            // {
+            //     FileLookup.MusubiLibraryDirs.AddRange(additionalLibraryDirs);
+            // }
+            //
+            // Scanner s = new(source, filename, e);
+            // ScannerOut scannerResult = s.ScanTokensFullInfo();
+            //
+            // if (printAST)
+            // {
+            //     foreach (Token t in scannerResult.FullTokens)
+            //     {
+            //         Console.WriteLine(
+            //             t.Type
+            //                 + " '"
+            //                 + t.Lexeme
+            //                 + "' at "
+            //                 + t.Filename
+            //                 + ":"
+            //                 + t.Line
+            //                 + ":"
+            //                 + t.Column
+            //         );
+            //     }
+            // }
+            //
+            // Parser p = new(scannerResult.ParsableTokens, e);
+            // ParseResult r = p.Parse();
+            // Node root = r.Root;
+            //
+            // if (printAST)
+            // {
+            //     Console.WriteLine("=====================Hover tokens=================");
+            //     foreach (Token t in r.HoverTokens)
+            //     {
+            //         Console.WriteLine(
+            //             t.Type
+            //                 + " '"
+            //                 + t.Lexeme
+            //                 + "' at "
+            //                 + t.Filename
+            //                 + ":"
+            //                 + t.Line
+            //                 + ":"
+            //                 + t.Column
+            //                 + " '"
+            //                 + t.DocString
+            //                 + "'"
+            //         );
+            //     }
+            // }
+            //
+            // if (printAST)
+            // {
+            //     printNode(root);
+            // }
+            //
+            // e.ReportAll();
+            // if (e.HasErrors)
+            // {
+            //     throw new InvalidOperationException(
+            //         $"The source has {e.Items.Count(i => i.Severity == Severity.Error)} errors and cannot be compiled."
+            //     );
+            // }
+            //
+            // int warningsCount = e.Items.Count(i => i.Severity == Severity.Warning);
+            // if (warningsCount > 0)
+            // {
+            //     Console.ForegroundColor = ConsoleColor.Yellow;
+            //     Console.WriteLine($"Compiling with {warningsCount} warnings.");
+            //     Console.ForegroundColor = ConsoleColor.Gray;
+            // }
+            //
+            // ICompiler c = targetLanguage switch
+            // {
+            //     TargetLanguage.C => new Compiling.Compiler(root),
+            //     TargetLanguage.LC => new CompilerToLC(root),
+            //     _ => throw new NotImplementedException(),
+            // };
+            // return c.Compile();
         }
 
         private static void writeIndent(int n)
