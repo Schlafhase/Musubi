@@ -45,8 +45,8 @@ Lambda Calculus as possible while still being usable.
 
 #### Using dotnet tools
 
-If you have the .NET SDK installed, you can install the Musubi compiler with this simple
-command:
+If you have the .NET SDK installed, you can install the Musubi compiler with
+this simple command:
 
 ```sh
 dotnet tool install -g Musubi
@@ -107,11 +107,16 @@ For those who don't know: Lambda Calculus (LC) is the most basic functional
 programming language in which you only have anonymous functions, also referred
 to as "Lambdas". Theres three types of syntax pieces in LC:
 
-| Syntax     | Name        | Description                                                                                                                                                                | Python equivalent |
-| ---------- | ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------- |
-| `λx.{...}` | Lambda      | A function which takes exactly one `x` (can be any name) as its parameter and returns a body that can use x.                                                               | `lambda x: {...}` |
-| `x y`      | Application | Calls a lambda with an argument.                                                                                                                                           | `x(y)`            |
-| `x (y z)`  | Parentheses | Should be self-explanatory. Parentheses can be used to specify order of evaluation. Application in LC is **left associative** with the lowest possible binding precedence. | `x(y(z))`         |
+> [!NOTE]
+>
+> In the examples below, `{...}` is **not part of the syntax**. It serves as a
+> placeholder.
+
+| Syntax                                              | Name        | Description                                                                                                                                                                | Python equivalent |
+| --------------------------------------------------- | ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------- |
+| `λx.{...}` (Musubi allows using `\` instead of `λ`) | Lambda      | A function which takes exactly one `x` (can be any name) as its parameter and returns a body that can use x. The lambda is **right associative**.                          | `lambda x: {...}` |
+| `x y`                                               | Application | Calls a lambda with an argument.                                                                                                                                           | `x(y)`            |
+| `x (y z)`                                           | Parentheses | Should be self-explanatory. Parentheses can be used to specify order of evaluation. Application in LC is **left associative** with the lowest possible binding precedence. | `x(y(z))`         |
 
 The confusing part is that you really only have these lambdas. So we can
 conclude that every lambda has to take a lambda as it's parameter (`x` in the
@@ -128,7 +133,7 @@ actually a simple trick to have a function use more parameters. It's called
 > [syntax in Musubi for them](#musubis-syntax).
 
 ```
-curriedLambda := \λa.\λb.a b
+curriedLambda := λa.λb.a b
 ```
 
 What this means is: A lambda that takes an `a` and returns another lambda that
