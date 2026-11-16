@@ -1,4 +1,4 @@
 namespace Musubi.Compiler.Scanning
 {
-    public class Newline : Trivia;
+    public sealed record Newline : Trivia;
 }

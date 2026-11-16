@@ -1,4 +1,4 @@
 namespace Musubi.Compiler.Scanning
 {
-    public abstract class Trivia;
+    public abstract record Trivia;
 }

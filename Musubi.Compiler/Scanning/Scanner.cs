@@ -3,7 +3,6 @@ namespace Musubi.Compiler.Scanning
     public readonly struct ScannerOut
     {
         public readonly List<Token> Tokens = [];
-        public readonly Dictionary<string, List<Token>> Macros = [];
         public required Errors Errors { get; init; }
 
         public ScannerOut() { }
@@ -18,10 +17,7 @@ namespace Musubi.Compiler.Scanning
         }
     }
 
-    public class Scanner(
-            MusubiSource source,
-        Errors errors
-    )
+    public class Scanner(MusubiSource source, Errors errors)
     {
         private readonly string _source = source.Source;
         private readonly List<Token> _tokens = [];
@@ -30,6 +26,12 @@ namespace Musubi.Compiler.Scanning
         private int _current;
         private int _line = 1;
         private int _column = 1;
+
+        private readonly List<Trivia> _currentLeadingTrivia = [];
+        private readonly List<Trivia> _currentTrailingTrivia = [];
+        private bool _addingToLeadingTrivia = true;
+        private List<Trivia> _currentTrivia =>
+            _addingToLeadingTrivia ? _currentLeadingTrivia : _currentTrailingTrivia;
 
         private static readonly Dictionary<string, TokenType> _keywords = new()
         {
@@ -71,12 +73,12 @@ namespace Musubi.Compiler.Scanning
             return r;
         }
 
-
         private void scanToken()
         {
             char c = advance();
             switch (c)
             {
+                // simple tokens
                 case '(':
                     addToken(TokenType.LeftParen);
                     break;
@@ -93,15 +95,6 @@ namespace Musubi.Compiler.Scanning
                 case ',':
                     addToken(TokenType.ListSeparator);
                     break;
-                case ';':
-                    while (!endReached() && advance() != '\n')
-                    {
-                        _currentDocString += peek(-1);
-                    }
-                    _currentDocString += '\n';
-                    _line++;
-                    _column = 1;
-                    break;
                 case ':':
                     if (peek() == '=')
                     {
@@ -114,130 +107,106 @@ namespace Musubi.Compiler.Scanning
                         identifier();
                     }
                     break;
-                case ' ':
+                // trivia
+                case ';':
+                    string comment = "";
+                    while (!endReached() && advance() != '\n')
+                    {
+                        comment += peek(-1);
+                    }
+                    _currentTrivia.Add(new Comment(comment));
+                    break;
                 case '\r':
+                    break;
+                case ' ':
                 case '\t':
-                    break;
-                case '\n':
-                    _line++;
-                    _column = 1;
-                    break;
-                default:
-                    if (digit(c))
+                    if (_currentTrivia.Count >= 1 && _currentTrivia[^1] is Whitespace ws)
                     {
-                        number();
-                    }
-                    else if (c == '\'')
-                    {
-                        // try to parse character literal
-                        char value = advance();
-                        if (value == '\\')
-                        {
-                            switch (advance())
-                            {
-                                case '\\':
-                                    value = '\\';
-                                    break;
-                                case '\'':
-                                    value = '\'';
-                                    break;
-                                case 'n':
-                                    value = '\n';
-                                    break;
-                                case 't':
-                                    value = '\t';
-                                    break;
-                                default:
-                                    errors.Error(
-                                        @"Unknown escape sequence. To escape a \ use ""\\""",
-                                        source.Filename,
-                                        _line,
-                                        _column,
-                                        2
-                                    );
-                                    break;
-                            }
-                        }
-                        if (advance() == '\'')
-                        {
-                            addToken(TokenType.Number, (int)value);
-                        }
-                        else
-                        {
-                            identifier();
-                        }
-                    }
-                    else if (c == '"')
-                    {
-                        addToken(TokenType.LeftParen);
-                        while (peek() is not ('"' or '\n' or '\0'))
-                        {
-                            _start = _current;
-                            char value = advance();
-                            if (value == '\\')
-                            {
-                                switch (advance())
-                                {
-                                    case '\\':
-                                        value = '\\';
-                                        break;
-                                    case '"':
-                                        value = '"';
-                                        break;
-                                    case 'n':
-                                        value = '\n';
-                                        break;
-                                    case 't':
-                                        value = '\t';
-                                        break;
-                                    default:
-                                        errors.Error(
-                                            @"Unknown escape sequence. To escape a \ use ""\\""",
-                                            source.Filename,
-                                            _line,
-                                            _column,
-                                            2
-                                        );
-                                        break;
-                                }
-                            }
-                            addToken(TokenType.ScottNumber, (int)value);
-                            addToken(TokenType.Identifier, ":");
-                        }
-                        if (peek() == '"')
-                        {
-                            advance();
-                            addToken(TokenType.Identifier, "nil");
-                            addToken(TokenType.RightParen);
-                        }
-                        else
-                        {
-                            errors.Error(
-                                $"Expected '\"' but got {(peek() == '\n' ? "\\n" : "EOF")}",
-                                source.Filename,
-                                _line,
-                                _column
-                            );
-                        }
-                    }
-                    else if (!_disallowedIdentifierChars.Contains(c))
-                    {
-                        identifier();
+                        _currentTrivia[^1] = ws with { Text = ws.Text + c };
                     }
                     else
                     {
-                        errors.Error(
-                            "Unexpected character '" + c + "'",
-                            source.Filename,
-                            _line,
-                            _column - 1
-                        ); // column - 1 because column refers to the column after advancing
+                        _currentTrivia.Add(new Whitespace(c.ToString()));
                     }
                     break;
+                case '\n':
+                    _currentTrivia.Add(new Newline());
+                    _addingToLeadingTrivia = true;
+                    _line++;
+                    _column = 1;
+                    break;
+                // literal shenanigans
+                case char when digit(c):
+                    number();
+                    break;
+                case char when c == '\'':
+                    characterOrIdentifier();
+                    break;
+                case char when c == '"':
+                    stringLiteral();
+                    break;
+                // identifier
+                case char when !_disallowedIdentifierChars.Contains(c):
+                    identifier();
+                    break;
+                default:
+                    errors.Error(
+                        "Unexpected character '" + c + "'",
+                        source.Filename,
+                        _line,
+                        _column - 1
+                    ); // column - 1 because column refers to the column after advancing
+                    break;
             }
-            if (c != ';' && !char.IsWhiteSpace(c))
+        }
+
+        private void stringLiteral()
+        {
+            while (peek() is not ('"' or '\n' or '\0'))
             {
-                _currentDocString = "";
+                _start = _current;
+                // TODO: ...
+            }
+        }
+
+        private void characterOrIdentifier()
+        {
+            // try to parse character literal
+            char value = advance();
+            if (value == '\\')
+            {
+                switch (advance())
+                {
+                    case '\\':
+                        value = '\\';
+                        break;
+                    case '\'':
+                        value = '\'';
+                        break;
+                    case 'n':
+                        value = '\n';
+                        break;
+                    case 't':
+                        value = '\t';
+                        break;
+                    default:
+                        errors.Error(
+                            @"Unknown escape sequence. To escape a \ use ""\\""",
+                            source.Filename,
+                            _line,
+                            _column,
+                            2
+                        );
+                        break;
+                }
+            }
+            if (advance() == '\'')
+            {
+                addToken(TokenType.Number, (int)value);
+            }
+            else
+            {
+                identifier();
             }
         }
 
@@ -282,175 +251,7 @@ namespace Musubi.Compiler.Scanning
         private void identifier()
         {
             string text = identifierString();
-            if (text == "#define")
-            {
-                while (char.IsWhiteSpace(peek()))
-                {
-                    advance();
-                }
-                _start = _current;
-                string name = identifierString();
-                if (string.IsNullOrEmpty(name))
-                {
-                    errors.Error("Expected macro name", source.Filename, _line, _column);
-                    return;
-                }
-                _start = _current;
-                string macroSource = "";
-                char c = advance();
-                while (c != '\n')
-                {
-                    macroSource += c;
-                    c = advance();
-                }
-                Errors macroErrors = new();
-                macroErrors.FilenameToSource[$"Macro '{name}' defined in {source.Filename}"] = macroSource;
-                Scanner macroScanner = new(
-                    macroSource,
-                    $"Macro '{name}' defined in {source.Filename}",
-                    macroErrors
-                );
-                List<Token> scanResult =
-                [
-                    .. macroScanner.ScanTokens().Where(t => t.Type != TokenType.EOF),
-                ];
-                if (macroErrors.HasErrors)
-                {
-                    errors.Error("Defined macro couldn't be tokenised", filepath, _line, _column);
-                }
-                else
-                {
-                    _macros[name] = scanResult;
-                }
-                _line++;
-                _column = 1;
-            }
-            else if (text == "#include")
-            {
-                while (char.IsWhiteSpace(peek()))
-                {
-                    advance();
-                }
-                _start = _current;
-                string? path = filename();
-                if (path is null)
-                {
-                    return;
-                }
-                string includeSource = "";
-                try
-                {
-                    path = FileLookup.GetPath(path);
-                    includeSource = File.ReadAllText(Path.GetFullPath(path));
-                }
-                catch (FileNotFoundException)
-                {
-                    errors.Error(
-                        "The requested module couldn't be found in any of the library directories",
-                        filepath,
-                        _line,
-                        _column - (_current - _start),
-                        _current - _start
-                    );
-                }
-                catch (DirectoryNotFoundException)
-                {
-                    errors.Error(
-                        "Part of the path could not be found",
-                        filepath,
-                        _line,
-                        _column - (_current - _start),
-                        _current - _start
-                    );
-                }
-                catch (ArgumentException)
-                {
-                    errors.Error(
-                        "Invalid filepath",
-                        filepath,
-                        _line,
-                        _column - (_current - _start),
-                        _current - _start
-                    );
-                }
-
-                if (_includeOnceAlreadyIncluded.Contains(path))
-                {
-                    return;
-                }
-
-                if (includedFrom?.Contains(path) ?? false)
-                {
-                    errors.Error(
-                        "Circular include",
-                        filepath,
-                        _line,
-                        _column - (_current - _start),
-                        _current - _start
-                    );
-                    return;
-                }
-
-                Errors includeErrors = new();
-
-                includeErrors.FilenameToSource[path] = includeSource;
-                errors.FilenameToSource[path] = includeSource;
-
-                HashSet<string> innerIncludedFrom = [filepath];
-                foreach (string includedFromPath in includedFrom ?? [])
-                {
-                    innerIncludedFrom.Add(includedFromPath);
-                }
-                Scanner includeScanner = new(
-                    includeSource,
-                    path,
-                    includeErrors,
-                    innerIncludedFrom,
-                    _includeOnceAlreadyIncluded,
-                    _macros
-                );
-                (List<Token> tokens, Dictionary<string, List<Token>> macros) =
-                    includeScanner.ScanTokensInIncludedFile();
-                errors.Items.AddRange(includeErrors.Items);
-                if (tokens.Any(t => t.Type == TokenType.IncludeOnce))
-                {
-                    _includeOnceAlreadyIncluded.Add(path);
-                }
-                _tokens.AddRange(
-                    tokens
-                        .Where(t => t.Type != TokenType.IncludeOnce)
-                        .Select(t =>
-                            t with
-                            {
-                                IncludedAt = new(
-                                    new CodeLocation(filepath, _line, _start),
-                                    new CodeLocation(filepath, _line, _column)
-                                ),
-                            }
-                        )
-                );
-                // also deine macros from included file
-                foreach (KeyValuePair<string, List<Token>> kvp in macros)
-                {
-                    _macros[kvp.Key] = kvp.Value;
-                }
-                foreach (var kvp in includeErrors.FilenameToSource)
-                {
-                    errors.FilenameToSource[kvp.Key] = kvp.Value;
-                }
-            }
-            else if (text == "#once")
-            {
-                addToken(TokenType.IncludeOnce);
-            }
-            else if (_macros?.TryGetValue(text, out var replacement) ?? false)
-            {
-                foreach (Token t in replacement)
-                {
-                    addToken(t.Type, t.Literal);
-                }
-            }
-            else if (_keywords.TryGetValue(text, out TokenType type))
+            if (_keywords.TryGetValue(text, out TokenType type))
             {
                 addToken(type);
             }
@@ -518,15 +319,20 @@ namespace Musubi.Compiler.Scanning
 
         private void addToken(TokenType type, object? literal = null)
         {
+            if (_tokens.Count > 0)
+            {
+                _tokens[^1].TrailingTrivia = [.. _currentTrailingTrivia];
+            }
             _tokens.Add(
-                new(type, currentLexeme(), _line, _column - (_current - _start), filepath)
+                new(type, currentLexeme(), _line, _column - (_current - _start), source.Filename)
                 {
                     Literal = literal,
-                    DocString = string.IsNullOrWhiteSpace(_currentDocString)
-                        ? null
-                        : _currentDocString,
+                    LeadingTrivia = [.. _currentLeadingTrivia],
                 }
             );
+            _currentLeadingTrivia.Clear();
+            _currentTrailingTrivia.Clear();
+            _addingToLeadingTrivia = false;
         }
 
         private bool endReached()

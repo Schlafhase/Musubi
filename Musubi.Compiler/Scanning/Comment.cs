@@ -1,6 +1,4 @@
 namespace Musubi.Compiler.Scanning
 {
-    public class Comment : Trivia { 
-        public required string Content;
-    }
+    public sealed record Comment(string Content) : Trivia;
 }
