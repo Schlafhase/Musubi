@@ -5,7 +5,7 @@ namespace Musubi.Compiler.Expanding;
 public readonly struct ExpanderOut
 {
     public readonly List<Token> Tokens;
-    public required Errors Errors { get; init; }
+    public required ErrorLogger Errors { get; init; }
 }
 
 public sealed class Expander(ScannerOut input)

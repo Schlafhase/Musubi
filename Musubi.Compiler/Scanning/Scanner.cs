@@ -3,21 +3,21 @@ namespace Musubi.Compiler.Scanning
     public readonly struct ScannerOut
     {
         public readonly List<Token> Tokens = [];
-        public required Errors Errors { get; init; }
+        public required ErrorLogger Errors { get; init; }
 
         public ScannerOut() { }
     }
 
     public static class MusubiSourceScanExtension
     {
-        public static ScannerOut ScanTokens(this MusubiSource source, Errors errors)
+        public static ScannerOut ScanTokens(this MusubiSource source, ErrorLogger errors)
         {
             Scanner s = new(source, errors);
             return s.ScanTokens();
         }
     }
 
-    public class Scanner(MusubiSource source, Errors errors)
+    public class Scanner(MusubiSource source, ErrorLogger errors)
     {
         private readonly string _source = source.Source;
         private readonly List<Token> _tokens = [];
@@ -43,6 +43,7 @@ namespace Musubi.Compiler.Scanning
             { "infix", TokenType.Infix },
             { "infixl", TokenType.Infixl },
             { "infixr", TokenType.Infixr },
+            { ":=", TokenType.Definition },
         };
 
         private static readonly HashSet<char> _disallowedIdentifierChars =
@@ -71,7 +72,9 @@ namespace Musubi.Compiler.Scanning
                 scanToken();
             }
             _column++;
+            _start = _current;
             addToken(TokenType.EOF);
+
             ScannerOut r = new() { Errors = errors };
             r.Tokens.AddRange(_tokens);
             return r;
@@ -136,18 +139,6 @@ namespace Musubi.Compiler.Scanning
                 case ',':
                     addToken(TokenType.ListSeparator);
                     break;
-                case ':':
-                    if (peek() == '=')
-                    {
-                        advance();
-                        addToken(TokenType.Definition);
-                        break;
-                    }
-                    else
-                    {
-                        identifier();
-                    }
-                    break;
 
                 // directives
                 case '#':
@@ -182,8 +173,9 @@ namespace Musubi.Compiler.Scanning
                     break;
 
                 default:
-                    errors.Error(
-                        "Unexpected character '" + c + "'",
+                    errors.AddDiagnostic(
+                        Errors.UnexpectedCharacter,
+                        c,
                         source.Filename,
                         _line,
                         _column - 1
@@ -197,7 +189,6 @@ namespace Musubi.Compiler.Scanning
             string value = "";
             while (peek() is not ('"' or '\n' or '\0'))
             {
-                _start = _current;
                 char next = advance();
                 if (next == '\\')
                 {
@@ -216,8 +207,8 @@ namespace Musubi.Compiler.Scanning
                             next = '\t';
                             break;
                         default:
-                            errors.Error(
-                                @"Unknown escape sequence. To escape a '\' use ""\\""",
+                            errors.AddDiagnostic(
+                                Errors.UnknownEscapeSequence,
                                 source.Filename,
                                 _line,
                                 _column
@@ -234,8 +225,10 @@ namespace Musubi.Compiler.Scanning
             }
             else
             {
-                errors.Error(
-                    $"Expected '\"' but got {(peek() == '\n' ? "\\n" : "EOF")}",
+                errors.AddDiagnostic(
+                    Errors.UnexpectedText,
+                    "\"",
+                    peek() == '\n' ? "\\n" : "EOF",
                     source.Filename,
                     _line,
                     _column
@@ -264,8 +257,8 @@ namespace Musubi.Compiler.Scanning
                         value = '\t';
                         break;
                     default:
-                        errors.Error(
-                            @"Unknown escape sequence. To escape a \ use ""\\""",
+                        errors.AddDiagnostic(
+                            Errors.UnknownEscapeSequence,
                             source.Filename,
                             _line,
                             _column,
@@ -343,7 +336,7 @@ namespace Musubi.Compiler.Scanning
             }
             if (_current == _start)
             {
-                errors.Error("Expected filename", source.Filename, _line, _column);
+                errors.AddDiagnostic(Errors.ExpectedFilename, source.Filename, _line, _column);
             }
             else
             {

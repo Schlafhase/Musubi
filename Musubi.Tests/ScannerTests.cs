@@ -7,7 +7,7 @@ namespace Musubi.Tests
     [TestFixture]
     public class ScannerTests
     {
-        private Errors _errors;
+        private ErrorLogger _errors;
 
         [SetUp]
         public void SetUp()
@@ -22,6 +22,7 @@ namespace Musubi.Tests
         }
 
         [Test]
+        [CancelAfter(500)]
         public void TestEmpty()
         {
             ScannerOut result = getResult("", "empty.mbi");
@@ -29,6 +30,7 @@ namespace Musubi.Tests
         }
 
         [Test]
+        [CancelAfter(500)]
         public void TestNewline()
         {
             ScannerOut result = getResult("\n", "newline.mbi");
@@ -44,6 +46,7 @@ namespace Musubi.Tests
         /// Tests a small module structure including some literals
         /// </summary>
         [Test]
+        [CancelAfter(500)]
         public void TestModule()
         {
             ScannerOut result = getResult(
@@ -119,6 +122,7 @@ namespace Musubi.Tests
         }
 
         [Test]
+        [CancelAfter(500)]
         public void TestTrivia()
         {
             ScannerOut result = getResult(
@@ -219,6 +223,7 @@ namespace Musubi.Tests
         }
 
         [Test]
+        [CancelAfter(500)]
         public void TestDirectives()
         {
             ScannerOut result = getResult(
@@ -250,6 +255,79 @@ namespace Musubi.Tests
                 TokenType.EOF,
             ];
             Assert.That(result.Tokens.Select(t => t.Type), Is.EqualTo(expected));
+        }
+
+        [Test]
+        [CancelAfter(500)]
+        public void TestLexemes()
+        {
+            ScannerOut result = getResult(
+                "#once \"hello\" 'a' 'aa' '\\t' 123 123c : #include abc/defg.hijklmnop let in := (f) ; comment ",
+                "lexemeTest.mbi"
+            );
+
+            string[] expected =
+            [
+                "#once",
+                "\"hello\"",
+                "'a'",
+                "'aa'",
+                "'\\t'",
+                "123",
+                "123c",
+                ":",
+                "#include",
+                "abc/defg.hijklmnop",
+                "let",
+                "in",
+                ":=",
+                "(",
+                "f",
+                ")",
+                "",
+            ];
+
+            Assert.That(result.Tokens.Select(t => t.Lexeme), Is.EqualTo(expected));
+
+            TokenType[] expectedTokens =
+            [
+                TokenType.IncludeOnce,
+                TokenType.String,
+                TokenType.Char,
+                TokenType.Identifier,
+                TokenType.Char,
+                TokenType.Number,
+                TokenType.ChurchNumber,
+                TokenType.Identifier,
+                TokenType.Include,
+                TokenType.Filename,
+                TokenType.Let,
+                TokenType.In,
+                TokenType.Definition,
+                TokenType.LeftParen,
+                TokenType.Identifier,
+                TokenType.RightParen,
+                TokenType.EOF,
+            ];
+
+            Assert.That(from t in result.Tokens select t.Type, Is.EqualTo(expectedTokens));
+        }
+
+        [Test]
+        [CancelAfter(500)]
+        public void TestError()
+        {
+            getResult("\"", "unterminatedString.mbi");
+
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(_errors.HasErrors);
+                Assert.That(_errors.Items, Has.Count.EqualTo(1));
+                Assert.That(
+                    _errors.Items[0].Message,
+                    Is.EqualTo(Errors.UnexpectedText.Message("\"", "EOF"))
+                );
+            }
         }
     }
 }

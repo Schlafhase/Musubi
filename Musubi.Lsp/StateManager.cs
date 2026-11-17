@@ -4,7 +4,6 @@ using Musubi.Compiler;
 using Musubi.Compiler.AST;
 using Musubi.Compiler.Parsing;
 using Musubi.Compiler.Scanning;
-using static Musubi.Compiler.Parsing.Parser;
 using Buffer = Microsoft.Language.Xml.Buffer;
 
 namespace Musubi.Lsp
@@ -20,7 +19,7 @@ namespace Musubi.Lsp
             public IReadOnlyList<Token>? Tokens;
             public IReadOnlyList<Token>? HoverTokens;
             public IReadOnlyList<(CodeRange range, Token symbol)>? Contexts;
-            public Errors Errors = new();
+            public ErrorLogger Errors = new();
 
             public CompilationData() { }
         }
@@ -57,8 +56,8 @@ namespace Musubi.Lsp
             data.HoverTokens = r.HoverTokens;
             data.Contexts = r.Contexts;
             logger.LogDebug(
-                $"CONTEXTS ({r.Contexts.Count}):" +
-                string.Join(", ", r.Contexts.Select(c => c.symbol.Lexeme))
+                $"CONTEXTS ({r.Contexts.Count}):"
+                    + string.Join(", ", r.Contexts.Select(c => c.symbol.Lexeme))
             );
             if (
                 documentPath.EndsWith(".mbim")
@@ -71,7 +70,7 @@ namespace Musubi.Lsp
             _data[documentPath] = data;
         }
 
-        public List<ErrorsReportable> GetErrors(string documentPath)
+        public List<Diagnostic> GetErrors(string documentPath)
         {
             return _data[documentPath].Errors?.Items ?? [];
         }

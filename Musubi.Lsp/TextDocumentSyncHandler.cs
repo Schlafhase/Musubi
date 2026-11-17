@@ -85,11 +85,11 @@ namespace Musubi.Lsp
             _stateManager.UpdateBuffer(uri.ToString(), new StringBuffer(text));
             var diagnostics = new Dictionary<DocumentUri, List<Diagnostic>>();
 
-            foreach (ErrorsReportable error in _stateManager.GetErrors(uri.ToString()))
+            foreach (Diagnostic error in _stateManager.GetErrors(uri.ToString()))
             {
                 Diagnostic d;
                 DocumentUri dUri = uri;
-                if (error is ErrorsReportableWithLocation el)
+                if (error is DiagnosticWithLocation el)
                 {
                     if (el.Filename != uri.ToString())
                     {
