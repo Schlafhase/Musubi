@@ -3,7 +3,7 @@ namespace Musubi.Compiler.Scanning
     public readonly struct ScannerOut
     {
         public readonly List<Token> Tokens = [];
-        public required ErrorLogger Errors { get; init; }
+        public required ErrorLogger ErrorLogger { get; init; }
 
         public ScannerOut() { }
     }
@@ -17,7 +17,7 @@ namespace Musubi.Compiler.Scanning
         }
     }
 
-    public class Scanner(MusubiSource source, ErrorLogger errors)
+    public class Scanner(MusubiSource source, ErrorLogger errors) : Consumer<char>
     {
         private readonly string _source = source.Source;
         private readonly List<Token> _tokens = [];
@@ -62,7 +62,15 @@ namespace Musubi.Compiler.Scanning
             '\0',
         ];
 
-        private static readonly HashSet<char> _allowedFilenameChars = ['_', '-', '.', '/', '~'];
+        private static readonly HashSet<char> _allowedFilenameChars =
+        [
+            '_',
+            '-',
+            '.',
+            '/',
+            '\\',
+            '~',
+        ];
 
         public ScannerOut ScanTokens()
         {
@@ -75,7 +83,7 @@ namespace Musubi.Compiler.Scanning
             _start = _current;
             addToken(TokenType.EOF);
 
-            ScannerOut r = new() { Errors = errors };
+            ScannerOut r = new() { ErrorLogger = errors };
             r.Tokens.AddRange(_tokens);
             return r;
         }

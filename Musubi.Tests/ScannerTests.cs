@@ -49,67 +49,13 @@ namespace Musubi.Tests
         [CancelAfter(500)]
         public void TestModule()
         {
-            ScannerOut result = getResult(
-                """
-                let
-                    a := 123,
-                    b := "hello",
-                    c := 'c',
-                    d := someId,
-                    ns := 10s,
-                    nc := 15c,
-                    nb := 17b,
-                in
-                """,
-                "module.mbim"
-            );
+            ScannerOut result = getResult(SharedValues.ModuleSource, "module.mbim");
 
             using (Assert.EnterMultipleScope())
             {
-                TokenType[] expected =
-                [
-                    TokenType.Let,
-                    TokenType.Identifier,
-                    TokenType.Definition,
-                    TokenType.Number,
-                    TokenType.ListSeparator,
-                    //
-                    TokenType.Identifier,
-                    TokenType.Definition,
-                    TokenType.String,
-                    TokenType.ListSeparator,
-                    //
-                    TokenType.Identifier,
-                    TokenType.Definition,
-                    TokenType.Char,
-                    TokenType.ListSeparator,
-                    //
-                    TokenType.Identifier,
-                    TokenType.Definition,
-                    TokenType.Identifier,
-                    TokenType.ListSeparator,
-                    //
-                    TokenType.Identifier,
-                    TokenType.Definition,
-                    TokenType.ScottNumber,
-                    TokenType.ListSeparator,
-                    //
-                    TokenType.Identifier,
-                    TokenType.Definition,
-                    TokenType.ChurchNumber,
-                    TokenType.ListSeparator,
-                    //
-                    TokenType.Identifier,
-                    TokenType.Definition,
-                    TokenType.BinaryNumber,
-                    TokenType.ListSeparator,
-                    //
-                    TokenType.In,
-                    TokenType.EOF,
-                ];
                 Assert.That(
                     result.Tokens.Select(t => t.Type),
-                    Is.EqualTo(expected),
+                    Is.EqualTo(SharedValues.ModuleExpectedTokens),
                     () => $"actual: [{string.Join(", ", result.Tokens.Select(t => t.Type))}]"
                 );
                 Assert.That(result.Tokens.Any(t => t.Literal is 123));
@@ -226,16 +172,7 @@ namespace Musubi.Tests
         [CancelAfter(500)]
         public void TestDirectives()
         {
-            ScannerOut result = getResult(
-                """
-                #once
-                #include stdlib
-                #define -> a b
-                c
-                #once
-                """,
-                "directives.mbi"
-            );
+            ScannerOut result = getResult(SharedValues.DirectivesSource, "directives.mbi");
 
             TokenType[] expected =
             [
@@ -246,7 +183,8 @@ namespace Musubi.Tests
                 //
                 TokenType.Define,
                 TokenType.Identifier,
-                TokenType.Identifier,
+                TokenType.String,
+                //
                 TokenType.Identifier,
                 //
                 TokenType.Identifier,

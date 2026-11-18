@@ -10,7 +10,7 @@ namespace Musubi.Compiler
             ),
         ];
 
-        public static string GetPath(string path)
+        public static string GetPath(string path, string relativeTo)
         {
             if (path.StartsWith("~/"))
             {
@@ -22,6 +22,12 @@ namespace Musubi.Compiler
             else if (Path.IsPathFullyQualified(path))
             {
                 return path;
+            }
+
+            string relative = getPath(path, relativeTo);
+            if (File.Exists(relative))
+            {
+                return relative;
             }
 
             foreach (string dir in MusubiLibraryDirs.Where(Path.IsPathFullyQualified))
