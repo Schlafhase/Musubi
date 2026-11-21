@@ -35,13 +35,11 @@ namespace Musubi.Compiler
             Severity.Error,
             "Unexpected character '{0}'"
         );
-
         public static readonly ErrorKindNoArgs UnknownEscapeSequence = new(
             1,
             Severity.Error,
             "Unknown escape sequence. To escape a '\\' use '\\\\'."
         );
-
         public static readonly ErrorKind<string, string> UnexpectedText = new(
             2,
             Severity.Error,
@@ -52,11 +50,30 @@ namespace Musubi.Compiler
             Severity.Error,
             "Expected filename"
         );
-
         public static readonly ErrorKind<TokenType, TokenType> UnexpectedToken = new(
-                4,
-                Severity.Error,
-                "Expected token of type '{0}' but got '{1}'"
-                );
+            4,
+            Severity.Error,
+            "Expected token of type '{0}' but got '{1}'"
+        );
+        public static readonly ErrorKindNoArgs CircularInclude = new(
+            5,
+            Severity.Error,
+            "This include would recurse infinitely."
+        );
+        public static readonly ErrorKindNoArgs FileNotFound = new(
+            6,
+            Severity.Error,
+            "This file couldn't be found in any library directory or relative to the source file."
+        );
+        public static readonly ErrorKindNoArgs TokenNotAllowedInMacro = new(
+            7,
+            Severity.Error,
+            "Macros mustn't contain #define or #include since the compiler pipeline doesn't support handling these."
+        );
+        public static readonly ErrorKindNoArgs NewlineInDirective = new(
+            8,
+            Severity.Error,
+            "Newlines between directives and their parameters are not allowed."
+        );
     }
 }

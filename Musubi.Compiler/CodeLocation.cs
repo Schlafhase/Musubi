@@ -8,6 +8,14 @@ namespace Musubi.Compiler
                 Column = a.Column + b,
             };
 
+        public static CodeLocation operator -(CodeLocation a, int b) =>
+            a with
+            {
+                Column = a.Column <= 0 ? a.Column : a.Column - b,
+            };
+
+        public static implicit operator CodeRange(CodeLocation l) => l.Extend(0);
+
         /// <summary>
         /// Makes a <see cref="CodeRange">CodeRange</see> out
         /// of this <see cref="CodeLocation">CodeLocation</see>
@@ -16,7 +24,7 @@ namespace Musubi.Compiler
         /// </summary>
         public CodeRange Extend(int n)
         {
-            return new CodeRange(this, this + n);
+            return new CodeRange(this, this + n - 1);
         }
 
         public CodeRange To(CodeLocation b)
@@ -30,9 +38,9 @@ namespace Musubi.Compiler
         }
     }
 
-    public record CodeRange(CodeLocation A, CodeLocation B) : IComparable<CodeRange>
+    public record CodeRange(CodeLocation Start, CodeLocation End) : IComparable<CodeRange>
     {
-        public int? Length => A.Line == B.Line ? B.Column - A.Column : null;
+        public int? Length => Start.Line == End.Line ? End.Column - Start.Column : null;
 
         public int CompareTo(CodeRange? other)
         {
@@ -41,17 +49,17 @@ namespace Musubi.Compiler
                 return 1;
             }
             if (
-                (B.Line - A.Line) == (other.B.Line - other.A.Line)
-                && (B.Column - A.Column) == (other.B.Column - other.A.Column)
+                (End.Line - Start.Line) == (other.End.Line - other.Start.Line)
+                && (End.Column - Start.Column) == (other.End.Column - other.Start.Column)
             )
             {
                 return 0;
             }
             return
-                (B.Line - A.Line) > (other.B.Line - other.A.Line)
+                (End.Line - Start.Line) > (other.End.Line - other.Start.Line)
                 || (
-                    (B.Line - A.Line) == (other.B.Line - other.A.Line)
-                    && (B.Column - A.Column) > (other.B.Column - other.A.Column)
+                    (End.Line - Start.Line) == (other.End.Line - other.Start.Line)
+                    && (End.Column - Start.Column) > (other.End.Column - other.Start.Column)
                 )
                 ? 1
                 : -1;
@@ -59,7 +67,7 @@ namespace Musubi.Compiler
 
         public override string ToString()
         {
-            return $"{A} - {B.Line}:{B.Column}";
+            return $"{Start} - {End.Line}:{End.Column}";
         }
     }
 }

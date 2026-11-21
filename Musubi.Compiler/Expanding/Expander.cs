@@ -1,4 +1,9 @@
+using System.Collections.Immutable;
+using Musubi.Compiler.Exceptions;
 using Musubi.Compiler.Scanning;
+
+// TODO: tests just time out need to investigate
+// TODO: respect #once directive
 
 namespace Musubi.Compiler.Expanding;
 
@@ -13,33 +18,58 @@ public readonly struct ExpanderOut
 
 public delegate string FileResolver(string target, string from);
 
+public static class ScannerOutExpandExtension
+{
+    public static ExpanderOut Expand(
+        this ScannerOut input,
+        FileResolver? fileResolver = null,
+        ImmutableHashSet<string>? includedFrom = null,
+        Dictionary<string, List<Token>>? macros = null
+    )
+    {
+        Expander e = new(input, fileResolver, includedFrom, macros);
+        return e.Expand();
+    }
+}
+
 /// <summary>
 /// Expands macros and includes
 /// </summary>
 /// <param name="input">Output from the scanner</param>
 /// <param name="fileResolver">function that takes a filepath to a target file and a filepath to the source file and returns an absolute path to the target file</param>
-public sealed class Expander(ScannerOut input, FileResolver? fileResolver = null) : Consumer<Token>
+public sealed class Expander(
+    ScannerOut input,
+    FileResolver? fileResolver = null,
+    ImmutableHashSet<string>? includedFrom = null,
+    Dictionary<string, List<Token>>? macros = null
+) : Consumer<Token>
 {
     private readonly FileResolver _fileResolver = fileResolver ?? FileLookup.GetPath;
+    private readonly ImmutableHashSet<string> _includedFrom = includedFrom ?? [];
 
-    private ErrorLogger errorLogger => input.ErrorLogger;
+    private ErrorLogger errorLogger => input.Context.ErrorLogger;
 
     protected override List<Token> Source => input.Tokens;
 
     protected override Token EndOfSourceValue => Source[^1]; // should be the EOF token
 
     private readonly List<Token> _expanded = [];
-    private readonly Dictionary<string, List<Token>> _macros = [];
+    private readonly Dictionary<string, List<Token>> _macros = macros ?? [];
 
     public ExpanderOut Expand()
     {
+        if (_includedFrom.Contains(input.Context.Source.FullPath))
+        {
+            throw new CircularIncludeException();
+        }
+
         while (!EndReached())
         {
             Token t = Advance();
             handleToken(t);
         }
 
-        ExpanderOut result = new() { ErrorLogger = input.ErrorLogger };
+        ExpanderOut result = new() { ErrorLogger = errorLogger };
         result.Tokens.AddRange(_expanded);
         return result;
     }
@@ -52,6 +82,14 @@ public sealed class Expander(ScannerOut input, FileResolver? fileResolver = null
                 handleMacroDefinition(t);
                 break;
 
+            case TokenType.Identifier:
+                handleIdentifier(t);
+                break;
+
+            case TokenType.Include:
+                handleInclude(t);
+                break;
+
             default:
                 addToken(t);
                 break;
@@ -62,27 +100,155 @@ public sealed class Expander(ScannerOut input, FileResolver? fileResolver = null
     {
         addToken(t);
 
-        Token id = Advance();
-        if (id == EndOfSourceValue)
+        Token current = Advance();
+        if (current == EndOfSourceValue)
         {
-            errorLogger.AddDiagnostic(Errors.UnexpectedToken, TokenType.Identifier, t.Type);
+            addToken(current);
+            errorLogger.AddDiagnostic(
+                current.Range,
+                Errors.UnexpectedToken,
+                TokenType.Identifier,
+                current.Type
+            );
+            return;
         }
+        string id = (current.Literal as string)!;
         List<Token> content = [];
 
-        while()
+        while (!current.LastOnLine && Peek().Type != TokenType.EOF)
+        {
+            current = Advance();
+            content.Add(current);
+            addToken(current);
+        }
+
+        if (
+            content.FindIndex(t => t.Type is TokenType.Define or TokenType.Include)
+            is >= 0
+                and int i
+        )
+        {
+            errorLogger.AddDiagnostic(content[i].Range, Errors.TokenNotAllowedInMacro);
+            // TODO: check if i should also remove those tokens from the list or if the parser can handle it
+        }
+
+        _macros[id] = content;
+    }
+
+    private void handleIdentifier(Token t)
+    {
+        if (_macros.TryGetValue((t.Literal as string)!, out var content))
+        {
+            addToken(
+                new Token(TokenType.BeginMacro, t.Lexeme, t.Line, t.Column, t.Filename)
+                {
+                    Index = _expanded.Count,
+                    Literal = t.Literal,
+                    LeadingTrivia = t.LeadingTrivia,
+                }
+            );
+
+            foreach (Token c in content)
+            {
+                addToken(c);
+            }
+
+            _expanded.Add(
+                new Token(TokenType.EndMacro, "", t.Line, t.Range.End.Column, t.Filename)
+                {
+                    Index = _expanded.Count,
+                    TrailingTrivia = t.TrailingTrivia,
+                }
+            );
+            return;
+        }
+
+        addToken(t);
+    }
+
+    private void handleInclude(Token t)
+    {
+        if (t.LastOnLine)
+        {
+            errorLogger.AddDiagnostic(t.Range.End, Errors.NewlineInDirective);
+            // skip to safe point and discard this include
+            SkipNextIf(t => t.Type is TokenType.Filename);
+            return;
+        }
+
+        Token targetToken = Advance();
+        List<Token> moduleContent = [];
+
+        if (targetToken.Type != TokenType.Filename)
+        {
+            errorLogger.AddDiagnostic(
+                targetToken.Range,
+                Errors.UnexpectedToken,
+                TokenType.Filename,
+                targetToken.Type
+            );
+        }
+        else
+        {
+            try
+            {
+                moduleContent = getModule((targetToken.Literal as string)!);
+            }
+            catch (FileNotFoundException)
+            {
+                errorLogger.AddDiagnostic(targetToken.Range, Errors.FileNotFound);
+            }
+            catch (CircularIncludeException)
+            {
+                errorLogger.AddDiagnostic(targetToken.Range, Errors.CircularInclude);
+            }
+        }
+
+        _expanded.Add(
+            new(
+                TokenType.BeginInclude,
+                t.Lexeme
+                    + string.Concat(t.TrailingTrivia.Select(t => t.ToString()))
+                    + string.Concat(targetToken.LeadingTrivia.Select(t => t.ToString()))
+                    + targetToken.Lexeme,
+                t.Line,
+                t.Column,
+                t.Filename
+            )
+            {
+                Index = _expanded.Count,
+                LeadingTrivia = t.LeadingTrivia,
+            }
+        );
+
+        foreach (Token mt in moduleContent)
+        {
+            addToken(mt);
+        }
+
+        _expanded.Add(
+            new(TokenType.EndInclude, "", t.Line, t.Column, t.Filename)
+            {
+                Index = _expanded.Count,
+                TrailingTrivia = targetToken.TrailingTrivia,
+            }
+        );
+    }
+
+    private List<Token> getModule(string target)
+    {
+        string fullPath = _fileResolver(target, input.Context.Source.FullPath);
+        string source = File.ReadAllText(fullPath);
+
+        CompilationContext moduleContext = new(new MusubiSource(source, fullPath), errorLogger);
+        return moduleContext
+            .ScanTokens()
+            .Expand(fileResolver, _includedFrom.Add(input.Context.Source.FullPath), macros)
+            .Tokens;
     }
 
     private void addToken(Token t)
     {
         _expanded.Add(t with { Index = _expanded.Count });
-    }
-}
-
-public static class ScannerOutExpandExtension
-{
-    public static ExpanderOut Expand(this ScannerOut input)
-    {
-        Expander e = new(input);
-        return e.Expand();
     }
 }

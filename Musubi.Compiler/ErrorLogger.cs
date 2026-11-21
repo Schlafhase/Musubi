@@ -106,9 +106,9 @@ namespace Musubi.Compiler
                     new DiagnosticWithLocation(
                         message,
                         kind,
-                        range.A.Filename,
-                        range.A.Line,
-                        range.A.Column,
+                        range.Start.Filename,
+                        range.Start.Line,
+                        range.Start.Column,
                         length
                     )
                 );

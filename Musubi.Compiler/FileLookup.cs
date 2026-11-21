@@ -39,7 +39,7 @@ namespace Musubi.Compiler
                 }
             }
             throw new FileNotFoundException(
-                "The requested module couldn't be found in any of the libarary directories."
+                "The requested module couldn't be found in any of the library directories."
             );
         }
 

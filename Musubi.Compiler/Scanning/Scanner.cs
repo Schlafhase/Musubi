@@ -3,23 +3,24 @@ namespace Musubi.Compiler.Scanning
     public readonly struct ScannerOut
     {
         public readonly List<Token> Tokens = [];
-        public required ErrorLogger ErrorLogger { get; init; }
 
         public ScannerOut() { }
+
+        public required CompilationContext Context { get; init; }
     }
 
     public static class MusubiSourceScanExtension
     {
-        public static ScannerOut ScanTokens(this MusubiSource source, ErrorLogger errors)
+        public static ScannerOut ScanTokens(this CompilationContext context)
         {
-            Scanner s = new(source, errors);
+            Scanner s = new(context);
             return s.ScanTokens();
         }
     }
 
-    public class Scanner(MusubiSource source, ErrorLogger errors)
+    public class Scanner(CompilationContext context)
     {
-        private readonly string _source = source.Source;
+        private readonly string _source = context.Source.Content;
         private readonly List<Token> _tokens = [];
 
         private int _start;
@@ -83,7 +84,7 @@ namespace Musubi.Compiler.Scanning
             _start = _current;
             addToken(TokenType.EOF);
 
-            ScannerOut r = new() { ErrorLogger = errors };
+            ScannerOut r = new() { Context = context };
             r.Tokens.AddRange(_tokens);
             return r;
         }
@@ -181,7 +182,11 @@ namespace Musubi.Compiler.Scanning
                     break;
 
                 default:
-                    errors.AddDiagnostic(here().Extend(1), Errors.UnexpectedCharacter, c);
+                    context.ErrorLogger.AddDiagnostic(
+                        here().Extend(1),
+                        Errors.UnexpectedCharacter,
+                        c
+                    );
                     break;
             }
         }
@@ -209,7 +214,10 @@ namespace Musubi.Compiler.Scanning
                             next = '\t';
                             break;
                         default:
-                            errors.AddDiagnostic(wholeToken(), Errors.UnknownEscapeSequence);
+                            context.ErrorLogger.AddDiagnostic(
+                                wholeToken(),
+                                Errors.UnknownEscapeSequence
+                            );
                             break;
                     }
                 }
@@ -222,13 +230,11 @@ namespace Musubi.Compiler.Scanning
             }
             else
             {
-                errors.AddDiagnostic(
+                context.ErrorLogger.AddDiagnostic(
+                    here() + 1,
                     Errors.UnexpectedText,
                     "\"",
-                    peek() == '\n' ? "\\n" : "EOF",
-                    source.Filename,
-                    _line,
-                    _column
+                    peek() == '\n' ? "\\n" : "EOF"
                 );
             }
         }
@@ -254,12 +260,9 @@ namespace Musubi.Compiler.Scanning
                         value = '\t';
                         break;
                     default:
-                        errors.AddDiagnostic(
-                            Errors.UnknownEscapeSequence,
-                            source.Filename,
-                            _line,
-                            _column,
-                            2
+                        context.ErrorLogger.AddDiagnostic(
+                            (here() - 1).Extend(1),
+                            Errors.UnknownEscapeSequence
                         );
                         break;
                 }
@@ -333,7 +336,7 @@ namespace Musubi.Compiler.Scanning
             }
             if (_current == _start)
             {
-                errors.AddDiagnostic(Errors.ExpectedFilename, source.Filename, _line, _column);
+                context.ErrorLogger.AddDiagnostic(here(), Errors.ExpectedFilename);
             }
             else
             {
@@ -395,12 +398,12 @@ namespace Musubi.Compiler.Scanning
 
         private CodeLocation start()
         {
-            return new CodeLocation(source.Filename, _line, _column - (_current - _start));
+            return new CodeLocation(context.Source.FullPath, _line, _column - (_current - _start));
         }
 
         private CodeLocation here()
         {
-            return new CodeLocation(source.Filename, _line, _column - 1);
+            return new CodeLocation(context.Source.FullPath, _line, _column - 1);
         }
 
         private void addToken(TokenType type, object? literal = null)
@@ -410,7 +413,13 @@ namespace Musubi.Compiler.Scanning
                 _tokens[^1].TrailingTrivia = [.. _currentTrailingTrivia];
             }
             _tokens.Add(
-                new(type, currentLexeme(), _line, _column - (_current - _start), source.Filename)
+                new(
+                    type,
+                    currentLexeme(),
+                    _line,
+                    _column - (_current - _start),
+                    context.Source.FullPath
+                )
                 {
                     Literal = literal,
                     LeadingTrivia = [.. _currentLeadingTrivia],

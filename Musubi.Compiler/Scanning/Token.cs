@@ -12,6 +12,8 @@ namespace Musubi.Compiler.Scanning
 
         public required int Index;
 
+        public bool LastOnLine => (TrailingTrivia.Count > 0 && TrailingTrivia[^1] is Newline) || Type == TokenType.EOF;
+
         public override string ToString()
         {
             return Type + " " + Lexeme + " at line " + Line + " column " + Column;

@@ -18,7 +18,8 @@ namespace Musubi.Tests
         private ScannerOut getResult(string source, string filename)
         {
             MusubiSource s = new(source, filename);
-            return s.ScanTokens(_errors);
+            CompilationContext context = new(s, _errors);
+            return context.ScanTokens();
         }
 
         [Test]

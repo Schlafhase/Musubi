@@ -89,13 +89,13 @@ namespace Musubi.Lsp
 
         private static bool positionInRange(Position p, CodeRange r)
         {
-            if (p.Line + 1 >= r.A.Line && p.Line + 1 <= r.B.Line)
+            if (p.Line + 1 >= r.Start.Line && p.Line + 1 <= r.End.Line)
             {
-                if (p.Line + 1 != r.B.Line)
+                if (p.Line + 1 != r.End.Line)
                 {
                     return true;
                 }
-                return r.A.Column <= p.Character && p.Character + 1 <= r.B.Column;
+                return r.Start.Column <= p.Character && p.Character + 1 <= r.End.Column;
             }
             return false;
         }

@@ -18,11 +18,19 @@ namespace Musubi.Compiler
 
         protected T Peek(int offset = 0)
         {
-            if (_current + offset >= Source.Count)
+            if (_current + offset >= Source.Count || _current + offset < 0)
             {
                 return EndOfSourceValue;
             }
             return Source[_current + offset];
+        }
+
+        protected void SkipNextIf(Func<T, bool> predicate)
+        {
+            if (predicate(Peek()))
+            {
+                Advance();
+            }
         }
     }
 }

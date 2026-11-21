@@ -18,7 +18,8 @@ public class ExpanderTests()
     private ExpanderOut getResult(string source, string filename)
     {
         MusubiSource s = new(source, filename);
-        return s.ScanTokens(_errors).Expand();
+        CompilationContext c = new(s, _errors);
+        return c.ScanTokens().Expand();
     }
 
     [Test]
@@ -51,7 +52,7 @@ public class ExpanderTests()
             TokenType.EndMacro,
             //
             TokenType.IncludeOnce,
-            TokenType.EOF
+            TokenType.EOF,
         ];
 
         Assert.That(result.Tokens.Select(t => t.Type), Is.EqualTo(expected));
