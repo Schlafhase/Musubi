@@ -10,6 +10,8 @@ namespace Musubi.Compiler.Scanning
             new(new(Filename, Line, Column), new(Filename, Line, Column + Lexeme.Length));
         public CodeRange? IncludedAt;
 
+        public required int Index;
+
         public override string ToString()
         {
             return Type + " " + Lexeme + " at line " + Line + " column " + Column;

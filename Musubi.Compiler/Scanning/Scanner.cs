@@ -17,7 +17,7 @@ namespace Musubi.Compiler.Scanning
         }
     }
 
-    public class Scanner(MusubiSource source, ErrorLogger errors) : Consumer<char>
+    public class Scanner(MusubiSource source, ErrorLogger errors)
     {
         private readonly string _source = source.Source;
         private readonly List<Token> _tokens = [];
@@ -181,13 +181,7 @@ namespace Musubi.Compiler.Scanning
                     break;
 
                 default:
-                    errors.AddDiagnostic(
-                        Errors.UnexpectedCharacter,
-                        c,
-                        source.Filename,
-                        _line,
-                        _column - 1
-                    ); // column - 1 because column refers to the column after advancing
+                    errors.AddDiagnostic(here().Extend(1), Errors.UnexpectedCharacter, c);
                     break;
             }
         }
@@ -215,12 +209,7 @@ namespace Musubi.Compiler.Scanning
                             next = '\t';
                             break;
                         default:
-                            errors.AddDiagnostic(
-                                Errors.UnknownEscapeSequence,
-                                source.Filename,
-                                _line,
-                                _column
-                            );
+                            errors.AddDiagnostic(wholeToken(), Errors.UnknownEscapeSequence);
                             break;
                     }
                 }
@@ -399,6 +388,21 @@ namespace Musubi.Compiler.Scanning
 
         private static bool alphaNumeric(char c) => alphabetic(c) || digit(c);
 
+        private CodeRange wholeToken()
+        {
+            return start().To(here());
+        }
+
+        private CodeLocation start()
+        {
+            return new CodeLocation(source.Filename, _line, _column - (_current - _start));
+        }
+
+        private CodeLocation here()
+        {
+            return new CodeLocation(source.Filename, _line, _column - 1);
+        }
+
         private void addToken(TokenType type, object? literal = null)
         {
             if (_tokens.Count > 0)
@@ -410,6 +414,7 @@ namespace Musubi.Compiler.Scanning
                 {
                     Literal = literal,
                     LeadingTrivia = [.. _currentLeadingTrivia],
+                    Index = _tokens.Count,
                 }
             );
             _currentLeadingTrivia.Clear();

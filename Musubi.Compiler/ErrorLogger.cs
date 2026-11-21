@@ -1,4 +1,3 @@
-using Musubi.Compiler.Scanning;
 
 namespace Musubi.Compiler
 {
@@ -72,76 +71,54 @@ namespace Musubi.Compiler
             Console.WriteLine();
         }
 
-        public void AddDiagnostic(
-            ErrorKindNoArgs kind,
-            string filename,
-            int line,
-            int column,
-            int length = 1
-        )
+        public void AddDiagnostic(CodeRange range, ErrorKindNoArgs kind)
         {
-            add(kind, kind.Message(), filename, line, column, length);
+            add(kind, kind.Message(), range);
         }
 
-        public void AddDiagnostic<T0>(
-            ErrorKind<T0> kind,
-            T0 a,
-            string filename,
-            int line,
-            int column,
-            int length = 1
-        )
+        public void AddDiagnostic<T0>(CodeRange range, ErrorKind<T0> kind, T0 a)
         {
-            add(kind, kind.Message(a), filename, line, column, length);
+            add(kind, kind.Message(a), range);
         }
 
-        public void AddDiagnostic<T0, T1>(
-            ErrorKind<T0, T1> kind,
-            T0 a,
-            T1 b,
-            string filename,
-            int line,
-            int column,
-            int length = 1
-        )
+        public void AddDiagnostic<T0, T1>(CodeRange range, ErrorKind<T0, T1> kind, T0 a, T1 b)
         {
-            add(kind, kind.Message(a, b), filename, line, column, length);
+            add(kind, kind.Message(a, b), range);
         }
 
         public void AddDiagnostic<T0, T1, T2>(
+            CodeRange range,
             ErrorKind<T0, T1, T2> kind,
             T0 a,
             T1 b,
-            T2 c,
-            string filename,
-            int line,
-            int column,
-            int length = 1
+            T2 c
         )
         {
-            add(kind, kind.Message(a, b, c), filename, line, column, length);
+            add(kind, kind.Message(a, b, c), range);
         }
 
-        private void add(
-            ErrorKind kind,
-            string message,
-            string filename,
-            int line,
-            int column,
-            int length = 1
-        )
+        private void add(ErrorKind kind, string message, CodeRange range)
         {
-            HasErrors = HasErrors || kind.Severity == Severity.Error;
-            _items.Add(
-                new DiagnosticWithLocation(
-                         message,
-                    kind,
-                    filename,
-                    line,
-                    column,
-                    length
-                )
-            );
+            if (range.Length is int length)
+            {
+                HasErrors = HasErrors || kind.Severity == Severity.Error;
+                _items.Add(
+                    new DiagnosticWithLocation(
+                        message,
+                        kind,
+                        range.A.Filename,
+                        range.A.Line,
+                        range.A.Column,
+                        length
+                    )
+                );
+            }
+            else
+            {
+                throw new NotImplementedException(
+                    "Diagnostics spanning over multiple lines are not supported (yet?)"
+                );
+            }
         }
 
         private static string messageWithErrorCode(ErrorKind kind, string message)

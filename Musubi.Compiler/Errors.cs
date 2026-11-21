@@ -1,3 +1,5 @@
+using Musubi.Compiler.Scanning;
+
 namespace Musubi.Compiler
 {
     public abstract record ErrorKind(int Id, Severity Severity, string Format);
@@ -50,5 +52,11 @@ namespace Musubi.Compiler
             Severity.Error,
             "Expected filename"
         );
+
+        public static readonly ErrorKind<TokenType, TokenType> UnexpectedToken = new(
+                4,
+                Severity.Error,
+                "Expected token of type '{0}' but got '{1}'"
+                );
     }
 }

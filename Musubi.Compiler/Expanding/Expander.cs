@@ -8,9 +8,7 @@ public readonly struct ExpanderOut
 
     public required ErrorLogger ErrorLogger { get; init; }
 
-    public ExpanderOut()
-    {
-    }
+    public ExpanderOut() { }
 }
 
 public delegate string FileResolver(string target, string from);
@@ -22,9 +20,9 @@ public delegate string FileResolver(string target, string from);
 /// <param name="fileResolver">function that takes a filepath to a target file and a filepath to the source file and returns an absolute path to the target file</param>
 public sealed class Expander(ScannerOut input, FileResolver? fileResolver = null) : Consumer<Token>
 {
-    private FileResolver _fileResolver = fileResolver ?? FileLookup.GetPath;
+    private readonly FileResolver _fileResolver = fileResolver ?? FileLookup.GetPath;
 
-    private ErrorLogger _errors => input.ErrorLogger;
+    private ErrorLogger errorLogger => input.ErrorLogger;
 
     protected override List<Token> Source => input.Tokens;
 
@@ -41,10 +39,7 @@ public sealed class Expander(ScannerOut input, FileResolver? fileResolver = null
             handleToken(t);
         }
 
-        ExpanderOut result = new()
-        {
-            ErrorLogger = input.ErrorLogger
-        };
+        ExpanderOut result = new() { ErrorLogger = input.ErrorLogger };
         result.Tokens.AddRange(_expanded);
         return result;
     }
@@ -53,10 +48,33 @@ public sealed class Expander(ScannerOut input, FileResolver? fileResolver = null
     {
         switch (t.Type)
         {
+            case TokenType.Define:
+                handleMacroDefinition(t);
+                break;
+
             default:
-                _expanded.Add(t);
+                addToken(t);
                 break;
         }
+    }
+
+    private void handleMacroDefinition(Token t)
+    {
+        addToken(t);
+
+        Token id = Advance();
+        if (id == EndOfSourceValue)
+        {
+            errorLogger.AddDiagnostic(Errors.UnexpectedToken, TokenType.Identifier, t.Type);
+        }
+        List<Token> content = [];
+
+        while()
+    }
+
+    private void addToken(Token t)
+    {
+        _expanded.Add(t with { Index = _expanded.Count });
     }
 }
 
