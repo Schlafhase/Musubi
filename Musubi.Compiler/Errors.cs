@@ -75,5 +75,14 @@ namespace Musubi.Compiler
             Severity.Error,
             "Newlines between directives and their parameters are not allowed."
         );
+
+        /// <summary>
+        /// Only emit when a module with #once in it is included in the SAME document twice
+        /// </summary>
+        public static readonly ErrorKindNoArgs DuplicateInclude = new(
+            9,
+            Severity.Warning,
+            "This module was already included."
+        );
     }
 }

@@ -66,5 +66,10 @@ namespace Musubi.Tests
             ->
             #once
             """;
+
+        public const string NestedIncludeSource = """
+            #include nested.mbi
+            "world"
+            """;
     }
 }

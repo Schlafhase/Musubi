@@ -58,6 +58,99 @@ public class ExpanderTests()
         Assert.That(result.Tokens.Select(t => t.Type), Is.EqualTo(expected));
     }
 
+    [Test]
+    public void TestNestedInclude()
+    {
+        ExpanderOut result = getResult(SharedValues.NestedIncludeSource, "nestedInclude.mbi");
+
+        TokenType[] expected =
+        [
+            TokenType.BeginInclude,
+            // inside nested.mbi
+            TokenType.BeginInclude,
+            // inside nested2.mbi
+            TokenType.String, // "hello"
+            TokenType.Identifier, // @
+            //
+            TokenType.EndInclude,
+            //
+            TokenType.EndInclude,
+            //
+            TokenType.String, // "world"
+            //
+            TokenType.EOF,
+        ];
+
+        Assert.That(result.Tokens.Select(t => t.Type), Is.EqualTo(expected));
+    }
+
+    [Test]
+    public void TestCircularInclude()
+    {
+        ExpanderOut result = getResult(
+            fileResolver("circular1.mbi", "", out string resolvedTo),
+            resolvedTo
+        );
+
+        TokenType[] expected =
+        [
+            TokenType.BeginInclude,
+            //
+            TokenType.BeginInclude, // empty because of the circular include
+            TokenType.EndInclude,
+            //
+            TokenType.EndInclude,
+            //
+            TokenType.EOF,
+        ];
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(result.Tokens.Select(t => t.Type), Is.EqualTo(expected));
+            Assert.That(result.ErrorLogger.HasErrors);
+            Assert.That(result.ErrorLogger.Items, Has.Count.EqualTo(1));
+        }
+        Assert.That(result.ErrorLogger.Items[0].Kind, Is.EqualTo(Errors.CircularInclude));
+    }
+
+    [Test]
+    public void TestIncludeOnce()
+    {
+        ExpanderOut result = getResult(
+            """
+            #include once.mbi #include once.mbi
+            #include includingOnce.mbi
+            """,
+            "testOnce.mbi"
+        );
+
+        TokenType[] expected =
+        [
+            TokenType.BeginInclude, // include once.mbi
+            TokenType.IncludeOnce,
+            TokenType.Identifier, // something
+            TokenType.EndInclude,
+            //
+            TokenType.BeginInclude, // include once.mbi (emit warning)
+            TokenType.EndInclude,
+            //
+            TokenType.BeginInclude, // include includingOnce.mbi
+            TokenType.BeginInclude, // include once.mbi (no warning)
+            TokenType.EndInclude,
+            TokenType.Identifier, // somethingElse
+            TokenType.EndInclude,
+            //
+            TokenType.EOF,
+        ];
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(result.Tokens.Select(t => t.Type), Is.EqualTo(expected));
+            Assert.That(result.ErrorLogger.Items, Has.Count.EqualTo(1));
+        }
+        Assert.That(result.ErrorLogger.Items[0].Kind, Is.EqualTo(Errors.DuplicateInclude));
+    }
+
     private static string fileResolver(string target, string relativeTo, out string resolvedTo)
     {
         resolvedTo = "/test-stubs/" + target;
@@ -65,8 +158,28 @@ public class ExpanderTests()
         {
             "basic.mbi" => """
                 let 
-                    x := 2 
+                    x := 2
                 in
+                """,
+            "nested.mbi" => """
+                #include nested2.mbi
+                """,
+            "nested2.mbi" => """
+                "hello" @
+                """,
+            "circular1.mbi" => """
+                #include circular2.mbi
+                """,
+            "circular2.mbi" => """
+                #include circular1.mbi
+                """,
+            "once.mbi" => """
+                #once
+                something
+                """,
+            "includingOnce.mbi" => """
+                #include once.mbi
+                somethingElse
                 """,
             _ => throw new FileNotFoundException(),
         };
