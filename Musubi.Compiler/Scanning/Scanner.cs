@@ -398,12 +398,16 @@ namespace Musubi.Compiler.Scanning
 
         private CodeLocation start()
         {
-            return new CodeLocation(context.Source.FullPath, _line, _column - (_current - _start));
+            return new CodeLocation(
+                context.Source.File.FullName,
+                _line,
+                _column - (_current - _start)
+            );
         }
 
         private CodeLocation here()
         {
-            return new CodeLocation(context.Source.FullPath, _line, _column - 1);
+            return new CodeLocation(context.Source.File.FullName, _line, _column - 1);
         }
 
         private void addToken(TokenType type, object? literal = null)
@@ -418,7 +422,7 @@ namespace Musubi.Compiler.Scanning
                     currentLexeme(),
                     _line,
                     _column - (_current - _start),
-                    context.Source.FullPath
+                    context.Source.File.FullName
                 )
                 {
                     Literal = literal,

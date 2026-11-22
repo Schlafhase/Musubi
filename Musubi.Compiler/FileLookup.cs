@@ -10,6 +10,12 @@ namespace Musubi.Compiler
             ),
         ];
 
+        public static string DefaultFileResolver(string path, string relativeTo, out string resolvedTo)
+        {
+            resolvedTo = GetPath(path, relativeTo);
+            return File.ReadAllText(resolvedTo);
+        }
+
         public static string GetPath(string path, string relativeTo)
         {
             if (path.StartsWith("~/"))

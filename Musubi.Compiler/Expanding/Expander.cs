@@ -2,7 +2,6 @@ using System.Collections.Immutable;
 using Musubi.Compiler.Exceptions;
 using Musubi.Compiler.Scanning;
 
-// TODO: tests just time out need to investigate
 // TODO: respect #once directive
 
 namespace Musubi.Compiler.Expanding;
@@ -16,7 +15,7 @@ public readonly struct ExpanderOut
     public ExpanderOut() { }
 }
 
-public delegate string FileResolver(string target, string from);
+public delegate string FileResolver(string target, string from, out string resolvedTo);
 
 public static class ScannerOutExpandExtension
 {
@@ -36,7 +35,7 @@ public static class ScannerOutExpandExtension
 /// Expands macros and includes
 /// </summary>
 /// <param name="input">Output from the scanner</param>
-/// <param name="fileResolver">function that takes a filepath to a target file and a filepath to the source file and returns an absolute path to the target file</param>
+/// <param name="fileResolver">function that takes a filepath to a target file and a filepath to the source file and returns the content of the target file</param>
 public sealed class Expander(
     ScannerOut input,
     FileResolver? fileResolver = null,
@@ -44,7 +43,7 @@ public sealed class Expander(
     Dictionary<string, List<Token>>? macros = null
 ) : Consumer<Token>
 {
-    private readonly FileResolver _fileResolver = fileResolver ?? FileLookup.GetPath;
+    private readonly FileResolver _fileResolver = fileResolver ?? FileLookup.DefaultFileResolver;
     private readonly ImmutableHashSet<string> _includedFrom = includedFrom ?? [];
 
     private ErrorLogger errorLogger => input.Context.ErrorLogger;
@@ -58,7 +57,7 @@ public sealed class Expander(
 
     public ExpanderOut Expand()
     {
-        if (_includedFrom.Contains(input.Context.Source.FullPath))
+        if (_includedFrom.Contains(input.Context.Source.File.FullName))
         {
             throw new CircularIncludeException();
         }
@@ -101,9 +100,10 @@ public sealed class Expander(
         addToken(t);
 
         Token current = Advance();
-        if (current == EndOfSourceValue)
+        addToken(current);
+
+        if (current.Type != TokenType.Identifier)
         {
-            addToken(current);
             errorLogger.AddDiagnostic(
                 current.Range,
                 Errors.UnexpectedToken,
@@ -113,6 +113,7 @@ public sealed class Expander(
             return;
         }
         string id = (current.Literal as string)!;
+
         List<Token> content = [];
 
         while (!current.LastOnLine && Peek().Type != TokenType.EOF)
@@ -237,14 +238,23 @@ public sealed class Expander(
 
     private List<Token> getModule(string target)
     {
-        string fullPath = _fileResolver(target, input.Context.Source.FullPath);
-        string source = File.ReadAllText(fullPath);
+        string source = _fileResolver(target, input.Context.Source.Directory, out string fullPath);
 
-        CompilationContext moduleContext = new(new MusubiSource(source, fullPath), errorLogger);
-        return moduleContext
-            .ScanTokens()
-            .Expand(fileResolver, _includedFrom.Add(input.Context.Source.FullPath), macros)
-            .Tokens;
+        CompilationContext moduleContext = new(
+            new MusubiSource(source, new FileInfo(fullPath)),
+            errorLogger
+        );
+        return
+        [
+            .. moduleContext
+                .ScanTokens()
+                .Expand(
+                    _fileResolver,
+                    _includedFrom.Add(input.Context.Source.File.FullName),
+                    _macros
+                )
+                .Tokens.Where(t => t.Type != TokenType.EOF),
+        ];
     }
 
     private void addToken(Token t)

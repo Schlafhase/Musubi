@@ -13,7 +13,7 @@ namespace Musubi.Compiler
 
         protected T Advance()
         {
-            return EndReached() ? Source[_current++] : EndOfSourceValue;
+            return EndReached() ?  EndOfSourceValue : Source[_current++] ;
         }
 
         protected T Peek(int offset = 0)

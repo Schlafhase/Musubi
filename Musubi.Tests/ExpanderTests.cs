@@ -17,9 +17,9 @@ public class ExpanderTests()
 
     private ExpanderOut getResult(string source, string filename)
     {
-        MusubiSource s = new(source, filename);
+        MusubiSource s = new(source, new FileInfo(filename));
         CompilationContext c = new(s, _errors);
-        return c.ScanTokens().Expand();
+        return c.ScanTokens().Expand(fileResolver);
     }
 
     [Test]
@@ -56,5 +56,19 @@ public class ExpanderTests()
         ];
 
         Assert.That(result.Tokens.Select(t => t.Type), Is.EqualTo(expected));
+    }
+
+    private static string fileResolver(string target, string relativeTo, out string resolvedTo)
+    {
+        resolvedTo = "/test-stubs/" + target;
+        return target switch
+        {
+            "basic.mbi" => """
+                let 
+                    x := 2 
+                in
+                """,
+            _ => throw new FileNotFoundException(),
+        };
     }
 }

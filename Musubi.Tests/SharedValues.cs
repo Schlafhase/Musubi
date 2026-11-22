@@ -4,7 +4,7 @@ namespace Musubi.Tests
 {
     public static class SharedValues
     {
-        public static string ModuleSource = """
+        public const string ModuleSource = """
             let
                 a := 123,
                 b := "hello",
@@ -58,9 +58,9 @@ namespace Musubi.Tests
             TokenType.EOF,
         ];
 
-        public static string DirectivesSource = """
+        public const string DirectivesSource = """
             #once
-            #include something.mbi
+            #include basic.mbi
             #define -> "helo"
             c
             ->
