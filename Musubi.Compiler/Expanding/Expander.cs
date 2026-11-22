@@ -179,6 +179,7 @@ public sealed class Expander(
 
         Token targetToken = Advance();
         List<Token> moduleContent = [];
+        string? target = targetToken.Literal as string;
 
         if (targetToken.Type != TokenType.Filename)
         {
@@ -193,7 +194,7 @@ public sealed class Expander(
         {
             try
             {
-                moduleContent = getModule((targetToken.Literal as string)!);
+                moduleContent = getModule(target!);
             }
             catch (FileNotFoundException)
             {
@@ -219,6 +220,7 @@ public sealed class Expander(
             {
                 Index = _expanded.Count,
                 LeadingTrivia = t.LeadingTrivia,
+                Literal = target,
             }
         );
 

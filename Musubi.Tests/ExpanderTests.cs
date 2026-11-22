@@ -32,7 +32,7 @@ public class ExpanderTests()
             TokenType.IncludeOnce,
             //
             TokenType.BeginInclude,
-            // inside something.mbi
+            // inside basic.mbi
             TokenType.Let,
             TokenType.Identifier,
             TokenType.Definition,
@@ -56,6 +56,11 @@ public class ExpanderTests()
         ];
 
         Assert.That(result.Tokens.Select(t => t.Type), Is.EqualTo(expected));
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(result.Tokens[1].Literal, Is.EqualTo("basic.mbi"));
+            Assert.That(result.Tokens[12].Literal, Is.EqualTo("->"));
+        }
     }
 
     [Test]
