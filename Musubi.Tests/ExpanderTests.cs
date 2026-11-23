@@ -76,12 +76,17 @@ public class ExpanderTests()
             // inside nested2.mbi
             TokenType.String, // "hello"
             TokenType.Identifier, // @
-            //
-            TokenType.EndInclude,
-            //
-            TokenType.EndInclude,
-            //
+            TokenType.Define,
+            TokenType.Identifier, // world
             TokenType.String, // "world"
+            //
+            TokenType.EndInclude,
+            //
+            TokenType.EndInclude,
+            //
+            TokenType.BeginMacro,
+            TokenType.String, // "world" from macro 'world'
+            TokenType.EndMacro,
             //
             TokenType.EOF,
         ];
@@ -156,6 +161,43 @@ public class ExpanderTests()
         Assert.That(result.ErrorLogger.Items[0].Kind, Is.EqualTo(Errors.DuplicateInclude));
     }
 
+    [Test]
+    public void TestNewlineAfterDirectives()
+    {
+        ExpanderOut result1 = getResult(
+            """
+            #define
+            bla blibb
+
+            #include
+            blubb.mbi
+            0
+            """,
+            "newlinestuff.mbi"
+        );
+
+        TokenType[] expected1 =
+        [
+            TokenType.Define,
+            TokenType.Identifier,
+            TokenType.Identifier,
+            //
+            TokenType.Include,
+            TokenType.Number,
+            TokenType.EOF,
+        ];
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(result1.Tokens.Select(t => t.Type), Is.EqualTo(expected1));
+            Assert.That(
+                from i in result1.ErrorLogger.Items
+                select i.Kind,
+                Is.EqualTo(new ErrorKind[] { Errors.NewlineInDirective,Errors.NewlineInDirective })
+            );
+        }
+    }
+
     private static string fileResolver(string target, string relativeTo, out string resolvedTo)
     {
         resolvedTo = "/test-stubs/" + target;
@@ -171,6 +213,7 @@ public class ExpanderTests()
                 """,
             "nested2.mbi" => """
                 "hello" @
+                #define world "world"
                 """,
             "circular1.mbi" => """
                 #include circular2.mbi

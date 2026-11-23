@@ -73,7 +73,7 @@ namespace Musubi.Compiler
         public static readonly ErrorKindNoArgs NewlineInDirective = new(
             8,
             Severity.Error,
-            "Newlines between directives and their parameters are not allowed."
+            "Newlines between directives and their parameters are not allowed. Did you forget to add parameters to this diretive?"
         );
 
         /// <summary>

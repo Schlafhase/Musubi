@@ -23,10 +23,11 @@ public static class ScannerOutExpandExtension
         this ScannerOut input,
         FileResolver? fileResolver = null,
         ImmutableHashSet<string>? includedFrom = null,
+        HashSet<string>? alreadyIncluded = null,
         Dictionary<string, List<Token>>? macros = null
     )
     {
-        Expander e = new(input, fileResolver, includedFrom, macros);
+        Expander e = new(input, fileResolver, includedFrom, alreadyIncluded, macros);
         return e.Expand();
     }
 }
@@ -40,11 +41,14 @@ public sealed class Expander(
     ScannerOut input,
     FileResolver? fileResolver = null,
     ImmutableHashSet<string>? includedFrom = null,
+    HashSet<string>? alreadyIncluded = null,
     Dictionary<string, List<Token>>? macros = null
 ) : Consumer<Token>
 {
     private readonly FileResolver _fileResolver = fileResolver ?? FileLookup.DefaultFileResolver;
     private readonly ImmutableHashSet<string> _includedFrom = includedFrom ?? [];
+    private readonly HashSet<string> _alreadyIncluded = alreadyIncluded ?? [];
+    private readonly HashSet<string> _alreadyIncludedInCurrentDoc = [];
 
     private ErrorLogger errorLogger => input.Context.ErrorLogger;
 
@@ -98,6 +102,11 @@ public sealed class Expander(
     private void handleMacroDefinition(Token t)
     {
         addToken(t);
+        if (t.LastOnLine)
+        {
+            errorLogger.AddDiagnostic(t.Range.End, Errors.NewlineInDirective);
+            return;
+        }
 
         Token current = Advance();
         addToken(current);
@@ -171,6 +180,7 @@ public sealed class Expander(
     {
         if (t.LastOnLine)
         {
+            addToken(t);
             errorLogger.AddDiagnostic(t.Range.End, Errors.NewlineInDirective);
             // skip to safe point and discard this include
             SkipNextIf(t => t.Type is TokenType.Filename);
@@ -203,6 +213,10 @@ public sealed class Expander(
             catch (CircularIncludeException)
             {
                 errorLogger.AddDiagnostic(targetToken.Range, Errors.CircularInclude);
+            }
+            catch (DuplicateIncludeWarning)
+            {
+                errorLogger.AddDiagnostic(targetToken.Range, Errors.DuplicateInclude);
             }
         }
 
@@ -246,17 +260,30 @@ public sealed class Expander(
             new MusubiSource(source, new FileInfo(fullPath)),
             errorLogger
         );
-        return
+
+        List<Token> ret =
         [
             .. moduleContext
                 .ScanTokens()
                 .Expand(
                     _fileResolver,
                     _includedFrom.Add(input.Context.Source.File.FullName),
+                    _alreadyIncluded,
                     _macros
                 )
                 .Tokens.Where(t => t.Type != TokenType.EOF),
         ];
+        if (_alreadyIncluded.Contains(fullPath) && ret.Any(t => t.Type == TokenType.IncludeOnce))
+        {
+            if (_alreadyIncludedInCurrentDoc.Contains(fullPath))
+            {
+                throw new DuplicateIncludeWarning();
+            }
+            return [];
+        }
+        _alreadyIncluded.Add(fullPath);
+        _alreadyIncludedInCurrentDoc.Add(fullPath);
+        return ret;
     }
 
     private void addToken(Token t)
