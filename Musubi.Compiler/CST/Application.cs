@@ -1,4 +1,4 @@
 namespace Musubi.Compiler.CST
 {
-    public sealed class Application : CSTNode;
+    public sealed class Application : CSTNonLeaf;
 }

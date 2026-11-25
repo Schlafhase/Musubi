@@ -6,9 +6,11 @@ namespace Musubi.Compiler.CST
         public required int BindingPrecedence;
     }
 
-    public sealed class Definition : CSTNonLeaf
+    public sealed class Definition : CSTNonLeaf, ICSTDataNode<string>
     {
         public required string Name;
         public InfixOptions? InfixOptions;
+
+        public string Data => Name;
     }
 }
