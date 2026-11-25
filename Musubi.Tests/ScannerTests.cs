@@ -1,5 +1,7 @@
+using System.Text;
 using System.Xml;
 using Musubi.Compiler;
+using Musubi.Compiler.Expanding;
 using Musubi.Compiler.Scanning;
 
 namespace Musubi.Tests
@@ -267,6 +269,29 @@ namespace Musubi.Tests
                     Is.EqualTo(Errors.UnexpectedText.Message("\"", "EOF"))
                 );
             }
+        }
+
+        [Test]
+        public void TestRoundtrip()
+        {
+            ScannerOut result = getResult(
+                SharedValues.BinaryArithmeticsSource,
+                "binaryArithmetics.mbim"
+            );
+
+            StringBuilder reconstructed = new();
+
+            foreach (Token t in result.Tokens)
+            {
+                reconstructed.Append(string.Concat(t.LeadingTrivia.Select(tr => tr.ToString())));
+                reconstructed.Append(t.Lexeme);
+                reconstructed.Append(string.Concat(t.TrailingTrivia.Select(tr => tr.ToString())));
+            }
+
+            Assert.That(
+                reconstructed.ToString(),
+                Is.EqualTo(SharedValues.BinaryArithmeticsSource)
+            );
         }
     }
 }

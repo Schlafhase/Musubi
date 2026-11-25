@@ -10,7 +10,7 @@ public readonly struct ExpanderOut
 {
     public readonly List<Token> Tokens = [];
 
-    public required ErrorLogger ErrorLogger { get; init; }
+    public required CompilationContext Context { get; init; }
 
     public ExpanderOut() { }
 }
@@ -72,7 +72,7 @@ public sealed class Expander(
             handleToken(t);
         }
 
-        ExpanderOut result = new() { ErrorLogger = errorLogger };
+        ExpanderOut result = new() { Context = input.Context };
         result.Tokens.AddRange(_expanded);
         return result;
     }

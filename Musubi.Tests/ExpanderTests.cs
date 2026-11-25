@@ -1,3 +1,4 @@
+using System.Text;
 using Musubi.Compiler;
 using Musubi.Compiler.Expanding;
 using Musubi.Compiler.Scanning;
@@ -193,9 +194,59 @@ public class ExpanderTests()
             Assert.That(
                 from i in result1.ErrorLogger.Items
                 select i.Kind,
-                Is.EqualTo(new ErrorKind[] { Errors.NewlineInDirective,Errors.NewlineInDirective })
+                Is.EqualTo(new ErrorKind[] { Errors.NewlineInDirective, Errors.NewlineInDirective })
             );
         }
+    }
+
+    [Test]
+    public void TestRoundtrip()
+    {
+        ExpanderOut result = getResult(
+            SharedValues.BinaryArithmeticsSource,
+            "binaryArithmetics.mbim"
+        );
+
+        StringBuilder reconstructed = new();
+
+        for (int i = 0; i < result.Tokens.Count; i++)
+        {
+            Token t = result.Tokens[i];
+            reconstructed.Append(string.Concat(t.LeadingTrivia.Select(tr => tr.ToString())));
+            if (t.Type is TokenType.BeginMacro)
+            {
+                reconstructed.Append(t.Literal as string);
+                while (i + 1 < result.Tokens.Count)
+                {
+                    i++;
+                    if (result.Tokens[i].Type is TokenType.EndMacro)
+                    {
+                        t = result.Tokens[i];
+                        break;
+                    }
+                }
+            }
+            else if (t.Type is TokenType.BeginInclude)
+            {
+                reconstructed.Append(t.Lexeme);
+                while (i + 1 < result.Tokens.Count)
+                {
+                    i++;
+                    if (result.Tokens[i].Type is TokenType.EndInclude)
+                    {
+                        t = result.Tokens[i];
+                        break;
+                    }
+                }
+            }
+            else
+            {
+                reconstructed.Append(t.Lexeme);
+            }
+            reconstructed.Append(string.Concat(t.TrailingTrivia.Select(tr => tr.ToString())));
+        }
+
+        Assert.That(reconstructed.ToString(), Is.EqualTo(SharedValues.BinaryArithmeticsSource));
     }
 
     private static string fileResolver(string target, string relativeTo, out string resolvedTo)
