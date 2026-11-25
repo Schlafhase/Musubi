@@ -35,6 +35,7 @@ namespace Musubi.Compiler.Scanning
         Include,
 
         // marker tokens (produced by the expander)
+        // TODO: turn these into trivia
         BeginInclude,
         EndInclude,
         BeginMacro,

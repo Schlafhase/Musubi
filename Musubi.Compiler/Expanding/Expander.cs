@@ -2,8 +2,6 @@ using System.Collections.Immutable;
 using Musubi.Compiler.Exceptions;
 using Musubi.Compiler.Scanning;
 
-// TODO: respect #once directive
-
 namespace Musubi.Compiler.Expanding;
 
 public readonly struct ExpanderOut

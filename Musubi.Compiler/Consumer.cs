@@ -13,7 +13,7 @@ namespace Musubi.Compiler
 
         protected T Advance()
         {
-            return EndReached() ?  EndOfSourceValue : Source[_current++] ;
+            return EndReached() ? EndOfSourceValue : Source[_current++];
         }
 
         protected T Peek(int offset = 0)
@@ -24,6 +24,8 @@ namespace Musubi.Compiler
             }
             return Source[_current + offset];
         }
+
+        protected T Previous() => Peek(-1);
 
         protected void SkipNextIf(Func<T, bool> predicate)
         {

@@ -84,5 +84,11 @@ namespace Musubi.Compiler
             Severity.Warning,
             "This module was already included."
         );
+
+        public static readonly ErrorKind<TokenType> ExpectedExpression = new(
+                10,
+                Severity.Error,
+                "Expected expression but got token of type {0}"
+                );
     }
 }

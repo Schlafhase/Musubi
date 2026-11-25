@@ -1,4 +1,4 @@
 namespace Musubi.Compiler.CST
 {
-    public sealed class Document : CSTNonLeaf;
+    public sealed class Document() : CSTNonLeaf;
 }
