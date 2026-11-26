@@ -33,6 +33,12 @@ namespace Musubi.Tests
         }
 
         [Test]
+        public void TestOnePlusOne()
+        {
+            Assert.That(1 + 1, Is.EqualTo(2));
+        }
+
+        [Test]
         [CancelAfter(500)]
         public void TestNewline()
         {

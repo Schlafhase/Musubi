@@ -90,5 +90,6 @@ namespace Musubi.Compiler
                 Severity.Error,
                 "Expected expression but got token of type {0}"
                 );
+
     }
 }

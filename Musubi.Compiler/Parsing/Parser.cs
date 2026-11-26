@@ -80,6 +80,8 @@ public class Parser(ExpanderOut input) : Consumer<Token>
             )
         )
             ;
+
+        throw new NotImplementedException();
     }
 
     private CSTNode atom()
@@ -117,6 +119,21 @@ public class Parser(ExpanderOut input) : Consumer<Token>
                 errorLogger.AddDiagnostic(Peek().Range, Errors.ExpectedExpression, Peek().Type);
                 return initNode<SyntaxError>();
         }
+    }
+
+    private CSTNode letin()
+    {
+        throw new NotImplementedException();
+    }
+
+    private CSTNode parens()
+    {
+        throw new NotImplementedException();
+    }
+
+    private CSTNode lambda()
+    {
+        throw new NotImplementedException();
     }
 
     private bool check(params TokenType[] types)

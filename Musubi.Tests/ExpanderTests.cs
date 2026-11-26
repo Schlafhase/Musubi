@@ -118,10 +118,10 @@ public class ExpanderTests()
         using (Assert.EnterMultipleScope())
         {
             Assert.That(result.Tokens.Select(t => t.Type), Is.EqualTo(expected));
-            Assert.That(result.ErrorLogger.HasErrors);
-            Assert.That(result.ErrorLogger.Items, Has.Count.EqualTo(1));
+            Assert.That(result.Context.ErrorLogger.HasErrors);
+            Assert.That(result.Context.ErrorLogger.Items, Has.Count.EqualTo(1));
         }
-        Assert.That(result.ErrorLogger.Items[0].Kind, Is.EqualTo(Errors.CircularInclude));
+        Assert.That(result.Context.ErrorLogger.Items[0].Kind, Is.EqualTo(Errors.CircularInclude));
     }
 
     [Test]
@@ -157,9 +157,9 @@ public class ExpanderTests()
         using (Assert.EnterMultipleScope())
         {
             Assert.That(result.Tokens.Select(t => t.Type), Is.EqualTo(expected));
-            Assert.That(result.ErrorLogger.Items, Has.Count.EqualTo(1));
+            Assert.That(result.Context.ErrorLogger.Items, Has.Count.EqualTo(1));
         }
-        Assert.That(result.ErrorLogger.Items[0].Kind, Is.EqualTo(Errors.DuplicateInclude));
+        Assert.That(result.Context.ErrorLogger.Items[0].Kind, Is.EqualTo(Errors.DuplicateInclude));
     }
 
     [Test]
@@ -192,7 +192,7 @@ public class ExpanderTests()
         {
             Assert.That(result1.Tokens.Select(t => t.Type), Is.EqualTo(expected1));
             Assert.That(
-                from i in result1.ErrorLogger.Items
+                from i in result1.Context.ErrorLogger.Items
                 select i.Kind,
                 Is.EqualTo(new ErrorKind[] { Errors.NewlineInDirective, Errors.NewlineInDirective })
             );

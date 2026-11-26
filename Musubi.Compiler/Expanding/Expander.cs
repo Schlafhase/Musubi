@@ -147,6 +147,14 @@ public sealed class Expander(
     {
         if (_macros.TryGetValue((t.Literal as string)!, out var content))
         {
+            content[0] = content[0] with
+            {
+                LeadingTrivia = [.. t.LeadingTrivia, new BeginMacro((t.Literal as string)!)],
+            };
+            content[^1] = content[^1] with
+            {
+                TrailingTrivia = [new EndMacro(), .. t.TrailingTrivia],
+            };
             addToken(
                 new Token(TokenType.BeginMacro, t.Lexeme, t.Line, t.Column, t.Filename)
                 {
